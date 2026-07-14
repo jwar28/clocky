@@ -1,5 +1,5 @@
 /**
- * Date utilities — week math for the Ransa Sunday → Saturday layout.
+ * Date utilities — week math for the Sunday → Saturday layout.
  * All weekStart values are ISO date strings 'YYYY-MM-DD' representing Sunday.
  */
 

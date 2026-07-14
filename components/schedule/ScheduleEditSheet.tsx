@@ -201,9 +201,9 @@ export function ScheduleEditSheet({
           </section>
 
           {/* Step 3 — ¿QUÉ TURNO? */}
-          <section className="space-y-3">
+          <section className="space-y-2">
             <SectionHeader step={3} label="¿Qué turno?" />
-            <div className="grid gap-2.5 sm:grid-cols-2">
+            <div className="flex flex-wrap gap-1.5">
               {SHIFT_OPTIONS.map((opt) => {
                 const active = shift.type === opt.id;
                 return (
@@ -212,29 +212,22 @@ export function ScheduleEditSheet({
                     type="button"
                     onClick={() => applyShiftType(opt.id)}
                     aria-pressed={active}
+                    title={opt.description}
                     className={cn(
-                      "flex flex-col items-start gap-2 rounded-lg border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      "inline-flex flex-1 items-center justify-center rounded-pill border px-3 py-1 text-center text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:text-sm",
                       active
-                        ? "border-primary bg-secondary-container"
-                        : "border-outline-variant bg-card hover:bg-muted",
+                        ? "border-primary bg-secondary-container text-primary ring-1 ring-primary"
+                        : cn("border-outline-variant bg-card hover:bg-muted", opt.pillClass),
                     )}
                   >
-                    <span
-                      aria-hidden
-                      className={cn(
-                        "inline-flex items-center rounded-pill border px-2.5 py-0.5 text-data-mono font-medium whitespace-nowrap",
-                        opt.pillClass,
-                      )}
-                    >
-                      {opt.label}
-                    </span>
-                    <span className="block text-xs leading-snug text-muted-foreground">
-                      {opt.description}
-                    </span>
+                    {opt.label}
                   </button>
                 );
               })}
             </div>
+            <p className="text-xs leading-snug text-muted-foreground">
+              {SHIFT_OPTIONS.find((o) => o.id === shift.type)?.description}
+            </p>
 
             {shift.type === "time" && (
               <div className="grid grid-cols-2 gap-3 rounded-md border border-outline-variant bg-card p-3">

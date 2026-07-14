@@ -2,7 +2,7 @@
 
 Frontend Next.js para gestión y control de la malla horaria semanal del equipo de operaciones logísticas. Implementa el sistema de diseño **Precision Logistics Grid** sobre **Tailwind CSS 3.4** + **shadcn/ui**, con **InsForge** como backend (PostgreSQL + Auth + Storage).
 
-Replica la densidad visual y estructura de la planilla operativa de Ransa: 2 filas de encabezado, columnas por día subdivididas en Inicio/Fin, zebra striping, tipografía monoespaciada para datos horarios.
+Replica la densidad visual y estructura de la planilla operativa logística: 2 filas de encabezado, columnas por día subdivididas en Inicio/Fin, zebra striping, tipografía monoespaciada para datos horarios.
 
 ---
 
@@ -11,7 +11,7 @@ Replica la densidad visual y estructura de la planilla operativa de Ransa: 2 fil
 - **Next.js 15** (App Router, React 19)
 - **TypeScript** estricto (`strict`, `noUncheckedIndexedAccess`, `noImplicitOverride`)
 - **Tailwind CSS 3.4** (locked, sin v4) con tokens del design system
-- **shadcn/ui** (Radix) sobreescrito al verde Ransa `#009B4D`
+- **shadcn/ui** (Radix) sobreescrito al verde institucional `#009B4D`
 - **Zustand** para estado de sesión / staff / horarios (async-only, sin mocks)
 - **InsForge SDK** (`@insforge/sdk`) — DB + Auth
 - **date-fns** para math de semana (Domingo → Sábado)
@@ -58,7 +58,7 @@ RLS habilitado: cualquier usuario autenticado puede CRUD; anon puede leer.
 
 `scripts/01-schema-and-seed.sql` contiene:
 - DDL de tablas + RLS
-- 9 empleados (los del adjunto de Ransa)
+- 9 empleados (los del adjunto inicial)
 - 9 horarios para la semana `2026-07-05` (Domingo 5 → Sábado 11 julio 2026)
 
 Para re-seed (idempotente):

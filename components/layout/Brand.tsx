@@ -10,18 +10,14 @@ interface BrandProps {
 
 export function Brand({ collapsed = false, className }: BrandProps) {
   return (
-    <div className={cn("flex items-baseline gap-2", className)}>
-      <span
-        className={cn(
-          "font-display font-bold tracking-tight text-primary",
-          collapsed ? "text-base" : "text-xl",
-        )}
-      >
-        RANSA
-      </span>
-      {!collapsed && (
-        <span className="font-display text-base font-semibold text-muted-foreground">/ {APP_NAME}</span>
+    <span
+      className={cn(
+        "font-display font-bold tracking-tight text-primary",
+        collapsed ? "text-base" : "text-xl",
+        className,
       )}
-    </div>
+    >
+      {APP_NAME}
+    </span>
   );
 }
