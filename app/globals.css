@@ -1,0 +1,140 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =========================================================================
+   Precision Logistics Grid — Design Tokens
+   HSL components (no hsl() wrapper) to allow Tailwind `hsl(var(--x))`
+   ========================================================================= */
+@layer base {
+  :root {
+    /* Core surface (workspace) */
+    --background: 199 100% 97%;        /* #f4faff */
+    --foreground: 199 46% 10%;         /* #111d23 */
+
+    /* Card / Popover */
+    --card: 0 0% 100%;                 /* #ffffff */
+    --card-foreground: 199 46% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 199 46% 10%;
+
+    /* Primary — Ransa brand green (#009B4D = 152 100% 31%) */
+    --primary: 152 100% 31%;
+    --primary-foreground: 0 0% 100%;
+    --primary-container: 149 100% 26%;   /* #008542 */
+    --on-primary-container: 125 100% 97%;/* #f6fff3 */
+    --primary-fixed: 137 94% 74%;        /* #80fba1 */
+    --inverse-primary: 135 67% 63%;      /* #62de87 */
+
+    /* Secondary — neutral cool gray-green */
+    --secondary: 112 5% 36%;             /* #556158 */
+    --secondary-foreground: 0 0% 100%;
+    --secondary-container: 120 17% 87%;  /* #d9e6da */
+    --on-secondary-container: 132 6% 38%;/* #5b675e */
+    --secondary-fixed: 120 17% 87%;
+    --secondary-fixed-dim: 113 11% 73%;  /* #bdcabe */
+
+    /* Tertiary — amber for Disponible / Amanece */
+    --tertiary: 35 100% 25%;             /* #805200 */
+    --tertiary-foreground: 0 0% 100%;
+    --tertiary-container: 33 100% 32%;   /* #a16800 */
+    --on-tertiary-container: 0 0% 100%;
+    --tertiary-fixed: 31 100% 85%;       /* #ffddb5 */
+    --tertiary-fixed-dim: 35 100% 67%;   /* #ffb957 */
+
+    /* Error */
+    --destructive: 0 75% 41%;            /* #ba1a1a */
+    --destructive-foreground: 0 0% 100%;
+    --destructive-container: 7 100% 92%; /* #ffdad6 */
+    --on-destructive-container: 355 100% 29%; /* #93000a */
+
+    /* Muted / accent */
+    --muted: 204 47% 88%;                /* #d7e4ec */
+    --muted-foreground: 199 25% 18%;     /* #263238 */
+    --accent: 120 17% 87%;
+    --accent-foreground: 132 6% 38%;
+
+    /* Borders */
+    --border: 115 11% 73%;               /* #bdcabb */
+    --input: 115 11% 73%;
+    --ring: 152 100% 31%;
+    --outline: 120 6% 45%;               /* #6d7a6d */
+    --outline-variant: 115 11% 73%;      /* #bdcabb */
+
+    /* Surfaces (extended Material-3 style) */
+    --surface: 199 100% 97%;             /* #f4faff */
+    --surface-dim: 203 28% 86%;          /* #cfdce4 */
+    --surface-bright: 199 100% 97%;
+    --surface-container-lowest: 0 0% 100%;
+    --surface-container-low: 203 88% 96%;/* #e9f6fd */
+    --surface-container: 204 65% 93%;    /* #e3f0f8 */
+    --surface-container-high: 204 56% 90%; /* #ddeaf2 */
+    --surface-container-highest: 204 47% 88%; /* #d7e4ec */
+    --surface-variant: 204 47% 88%;
+    --surface-tint: 151 100% 21%;        /* #006d34 */
+
+    /* Inverse */
+    --inverse-surface: 199 25% 18%;      /* #263238 */
+    --inverse-on-surface: 202 75% 94%;   /* #e6f3fb */
+
+    /* Tokens específicos del proyecto */
+    --ink: 199 46% 10%;                  /* #111d23 */
+    --ink-muted: 120 9% 27%;             /* #3e4a3e */
+    --grid: 115 11% 73%;                 /* #bdcabb */
+    --grid-soft: 203 28% 86%;            /* #cfdce4 */
+    --night: 35 100% 58%;                /* #f9a825 — orange time pairs */
+  }
+
+  /* No dark mode por ahora (single-org app) */
+}
+
+/* =========================================================================
+   Base resets + custom utilities
+   ========================================================================= */
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html, body {
+    height: 100%;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  /* Tabular nums everywhere monospace data appears */
+  .tabular-nums, .font-mono {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer utilities {
+  /* Zebra striping for grid rows */
+  .row-zebra > tr:nth-child(even) > td {
+    background-color: hsl(var(--secondary-container));
+  }
+  /* Grid border helpers */
+  .border-grid {
+    border-color: hsl(var(--grid));
+  }
+  .border-grid-soft {
+    border-color: hsl(var(--grid-soft));
+  }
+  /* Sticky left columns (tablet) */
+  .sticky-col-left {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background-color: inherit;
+  }
+  .sticky-col-left-2 {
+    position: sticky;
+    left: var(--col-staff-width, 14rem);
+    z-index: 2;
+    background-color: inherit;
+  }
+  /* Cell padding from DESIGN.md: table-cell-padding 12px 8px */
+  .cell-pad {
+    padding: 12px 8px;
+  }
+}
