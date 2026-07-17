@@ -1,10 +1,6 @@
 import { createClient } from "@insforge/sdk";
 import { getWeekStart, todayInBogota } from "@/lib/utils/date";
-import { PublicScheduleView } from "@/components/schedule/PublicScheduleView";
-import { useStaffStore } from "@/store/staff-store";
-import { useScheduleStore } from "@/store/schedule-store";
-import { useUiStore } from "@/store/ui-store";
-import { useSitesStore } from "@/store/taxonomy-store";
+import { PublicScheduleHydrator, type PublicScheduleInitialData } from "@/components/schedule/PublicScheduleHydrator";
 import type { Staff, WeekDays, WeeklySchedule } from "@/lib/types";
 
 export const metadata = {
@@ -58,10 +54,11 @@ function mapSchedule(row: ScheduleRow): WeeklySchedule {
  * Server Component for /equipo.
  *
  * Fetches staff, sites, and the current week's schedules with the public
- * anon key (RLS allows anon SELECT), then synchronously populates the
- * Zustand stores before rendering PublicScheduleView. This guarantees the
- * HTML response already contains the schedule grid — no client-side fetch
- * round-trip, no skeleton flash.
+ * anon key (RLS allows anon SELECT), then hands the data to the
+ * PublicScheduleHydrator client component which populates the Zustand
+ * stores on mount. The Server Component itself does NOT touch the
+ * Zustand stores because they are "use client" modules and calling their
+ * methods server-side throws at runtime.
  */
 export default async function EquipoPage() {
   const baseUrl = process.env.NEXT_PUBLIC_INSFORGE_URL;
@@ -69,12 +66,10 @@ export default async function EquipoPage() {
 
   const weekStart = getWeekStart(todayInBogota());
 
-  // Always set the weekStart so the client view starts on the right week.
-  useUiStore.setState({ weekStart });
+  const empty: PublicScheduleInitialData = { weekStart, staff: [], sites: [], schedules: [] };
 
   if (!baseUrl || !anonKey) {
-    // Env vars missing — render with empty stores; client will surface the error.
-    return <PublicScheduleView />;
+    return <PublicScheduleHydrator data={empty} />;
   }
 
   const insforge = createClient({ baseUrl, anonKey });
@@ -97,25 +92,18 @@ export default async function EquipoPage() {
       sites: sitesRes.error?.message,
       schedules: schedulesRes.error?.message,
     });
-    return <PublicScheduleView />;
+    return <PublicScheduleHydrator data={empty} />;
   }
 
-  const staff = (staffRes.data ?? []).map((r) => mapStaff(r as unknown as StaffRow));
-  const sites = (sitesRes.data ?? []).map((r) => ({ id: (r as unknown as SiteRow).id, name: (r as unknown as SiteRow).name }));
-  const schedules = (schedulesRes.data ?? []).map((r) => mapSchedule(r as unknown as ScheduleRow));
+  const data: PublicScheduleInitialData = {
+    weekStart,
+    staff: (staffRes.data ?? []).map((r) => mapStaff(r as unknown as StaffRow)),
+    sites: (sitesRes.data ?? []).map((r) => ({
+      id: (r as unknown as SiteRow).id,
+      name: (r as unknown as SiteRow).name,
+    })),
+    schedules: (schedulesRes.data ?? []).map((r) => mapSchedule(r as unknown as ScheduleRow)),
+  };
 
-  // Pre-populate the client stores so the initial SSR render already has the data.
-  // Zustand stores are module-level singletons; this is safe because we set
-  // fetched=true so subsequent client useEffects skip redundant fetches, and
-  // any concurrent request overwrites with its own fresh fetch.
-  useStaffStore.setState({ staff, fetched: true, loading: false, error: null });
-  useSitesStore.setState({ items: sites, fetched: true, loading: false, error: null });
-  useScheduleStore.setState((s) => ({
-    byWeek: { ...s.byWeek, [weekStart]: schedules },
-    fetchedWeeks: { ...s.fetchedWeeks, [weekStart]: true },
-    loading: false,
-    error: null,
-  }));
-
-  return <PublicScheduleView />;
+  return <PublicScheduleHydrator data={data} />;
 }
