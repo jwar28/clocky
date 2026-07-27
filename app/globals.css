@@ -77,15 +77,35 @@
     --inverse-surface: 199 25% 18%;      /* #263238 */
     --inverse-on-surface: 202 75% 94%;   /* #e6f3fb */
 
+    /* shadcn sidebar tokens (aliased to existing design tokens) */
+    --sidebar: var(--card);
+    --sidebar-foreground: var(--foreground);
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: var(--primary-foreground);
+    --sidebar-accent: var(--secondary-container);
+    --sidebar-accent-foreground: var(--on-secondary-container);
+    --sidebar-border: var(--outline-variant);
+    --sidebar-ring: var(--ring);
+
     /* Tokens específicos del proyecto */
     --ink: 199 46% 10%;                  /* #111d23 */
     --ink-muted: 120 9% 27%;             /* #3e4a3e */
     --grid: 115 11% 73%;                 /* #bdcabb */
     --grid-soft: 203 28% 86%;            /* #cfdce4 */
-    --night: 35 100% 58%;                /* #f9a825 — orange time pairs */
+    --night: 35 100% 58%;                /* #f9a825 — orange time pairs */                --sidebar-background: 0 0% 98%;                --sidebar-foreground: 240 5.3% 26.1%;                --sidebar-primary: 240 5.9% 10%;                --sidebar-primary-foreground: 0 0% 98%;                --sidebar-accent: 240 4.8% 95.9%;                --sidebar-accent-foreground: 240 5.9% 10%;                --sidebar-border: 220 13% 91%;                --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
   /* No dark mode por ahora (single-org app) */
+  .dark {
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
 }
 
 /* =========================================================================
