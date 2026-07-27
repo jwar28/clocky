@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import { TopBar } from "@/components/layout/TopBar";
 import { ScheduleGrid } from "@/components/schedule/ScheduleGrid";
 import { ScheduleSummaryCards } from "@/components/schedule/ScheduleSummaryCards";
@@ -21,6 +22,7 @@ export default function SchedulePage() {
   const byWeek = useScheduleStore((s) => s.byWeek);
   const schedLoading = useScheduleStore((s) => s.loading);
   const fetchedWeeks = useScheduleStore((s) => s.fetchedWeeks);
+  const toggleDayLock = useScheduleStore((s) => s.toggleDayLock);
 
   const [staffDialogOpen, setStaffDialogOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
@@ -44,6 +46,18 @@ export default function SchedulePage() {
     setEditingStaffId(staffId);
     setFocusDay(dayIndex as DayIndex);
     setSheetOpen(true);
+  }
+
+  async function onCellLockToggle(staffId: string, dayIndex: number) {
+    const staffMember = staff.find((s) => s.id === staffId);
+    const day = dayIndex as DayIndex;
+    try {
+      const nextLocked = await toggleDayLock(staffId, weekStart, day);
+      const name = staffMember ? ` para ${staffMember.fullName}` : "";
+      toast.success(nextLocked ? `Día bloqueado${name}` : `Día desbloqueado${name}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error al actualizar bloqueo");
+    }
   }
 
   const filteredStaff = siteFilter ? staff.filter((s) => s.defaultSite === siteFilter) : staff;
@@ -91,13 +105,18 @@ export default function SchedulePage() {
         </div>
 
         <div className="hidden md:block">
-          <ScheduleGrid onCellClick={onCellClick} onAssignWeek={onAddWeek} />
+          <ScheduleGrid
+            onCellClick={onCellClick}
+            onCellLockToggle={onCellLockToggle}
+            onAssignWeek={onAddWeek}
+          />
         </div>
         <MobileScheduleCards
           staff={filteredStaff}
           weekStart={weekStart}
           byStaffDays={(sid) => (byWeek[weekStart] ?? []).find((e) => e.staffId === sid)?.days}
           onCellClick={onCellClick}
+          onCellLockToggle={onCellLockToggle}
         />
       </div>
 

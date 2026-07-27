@@ -11,6 +11,8 @@ export interface DayShift {
   end?: string;   // 'HH:mm' when type === 'time'
   /** Free-text observation/notes for the day. Undefined when none. */
   note?: string;
+  /** Lock the day from bulk-edit overrides. Managed via the lock UI only. */
+  locked?: boolean;
 }
 
 /** Indexes (Sunday-first): 0=Dom, 1=Lun, 2=Mar, 3=Mié, 4=Jue, 5=Vie, 6=Sáb */

@@ -9,6 +9,8 @@ const ALL_DAYS: DayIndex[] = [0, 1, 2, 3, 4, 5, 6];
  *  - applying `newShift` to every `selectedDays`
  *  - preserving the existing shift on days NOT in selectedDays
  *  - defaulting to rest on unselected days when no existing schedule
+ *  - always preserving `locked` (locks are managed only via toggleDayLock,
+ *    never by bulk updates).
  */
 export function mergeDays(
   existing: WeekDays | undefined,
@@ -19,7 +21,9 @@ export function mergeDays(
   const next = {} as WeekDays;
   for (const idx of ALL_DAYS) {
     if (selected.has(idx)) {
-      next[idx] = { ...newShift };
+      const existingLocked = existing?.[idx]?.locked ?? false;
+      const { locked: _ignored, ...shiftWithoutLock } = newShift;
+      next[idx] = { ...shiftWithoutLock, locked: existingLocked };
     } else if (existing?.[idx]) {
       next[idx] = { ...existing[idx] };
     } else {
@@ -27,6 +31,16 @@ export function mergeDays(
     }
   }
   return next;
+}
+
+/** Returns true if the day index is locked for this week's days (handles undefined). */
+export function isDayLocked(days: WeekDays | undefined, dayIndex: DayIndex): boolean {
+  return days?.[dayIndex]?.locked === true;
+}
+
+/** Counts how many of the given indices are locked in `days`. */
+export function countLockedDays(days: WeekDays | undefined, indices: DayIndex[]): number {
+  return indices.reduce<number>((n, idx) => n + (isDayLocked(days, idx) ? 1 : 0), 0);
 }
 
 /** Pretty label for a single shift — used in the assignment preview. */

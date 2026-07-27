@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, StickyNote } from "lucide-react";
+import { ChevronDown, Lock, LockOpen, StickyNote } from "lucide-react";
 import { WEEK_DAY_LABELS } from "@/lib/constants";
 import { dayDate, formatWeekLabel } from "@/lib/utils/date";
 import { format } from "date-fns";
@@ -17,9 +17,17 @@ interface MobileScheduleCardsProps {
   weekStart: string;
   /** Optional. When omitted, cards render in read-only mode (no click handlers). */
   onCellClick?: (staffId: string, dayIndex: DayIndex) => void;
+  /** Optional. When omitted, the lock badge is read-only (no toggle). */
+  onCellLockToggle?: (staffId: string, dayIndex: DayIndex) => void;
 }
 
-export function MobileScheduleCards({ staff, byStaffDays, weekStart, onCellClick }: MobileScheduleCardsProps) {
+export function MobileScheduleCards({
+  staff,
+  byStaffDays,
+  weekStart,
+  onCellClick,
+  onCellLockToggle,
+}: MobileScheduleCardsProps) {
   const [openId, setOpenId] = useState<string | null>(staff[0]?.id ?? null);
   return (
     <div className="space-y-2 md:hidden">
@@ -50,13 +58,17 @@ export function MobileScheduleCards({ staff, byStaffDays, weekStart, onCellClick
                     const shift = days?.[d.index] ?? { type: "rest" as const };
                     const dateLabel = format(dayDate(weekStart, d.index), "EEE d", { locale: es });
                     const interactive = Boolean(onCellClick);
+                    const lockInteractive = Boolean(onCellLockToggle);
                     const note = shift.note?.trim() ?? "";
+                    const locked = shift.locked === true;
                     return (
                       <li
                         key={d.index}
                         className={cn(
                           "flex items-start justify-between gap-3 px-4 py-2.5",
                           interactive && "cursor-pointer hover:bg-muted focus-visible:bg-muted focus-visible:outline-none",
+                          locked &&
+                            "bg-tertiary-fixed/25 shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.25)]",
                         )}
                         onClick={interactive ? () => onCellClick?.(s.id, d.index) : undefined}
                         role={interactive ? "button" : undefined}
@@ -69,15 +81,48 @@ export function MobileScheduleCards({ staff, byStaffDays, weekStart, onCellClick
                         }}
                       >
                         <div className="min-w-[90px]">
-                          <div className="font-display text-table-header text-foreground">{d.long}</div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-display text-table-header text-foreground">{d.long}</span>
+                            {locked && (
+                              <span className="inline-flex h-5 items-center gap-1 rounded-md bg-primary px-2 text-[10px] font-semibold uppercase tracking-wide text-primary-foreground shadow-sm">
+                                <Lock className="h-3 w-3" aria-hidden />
+                                Bloq
+                              </span>
+                            )}
+                          </div>
                           <div className="text-body-sm text-muted-foreground capitalize">{dateLabel}</div>
                         </div>
                         <div className="min-w-0 flex-1 text-right">
-                          <div className="flex justify-end">
-                            {shift.type === "time" ? (
-                              <TimePair shift={shift} className="justify-end" />
-                            ) : (
-                              <StatusChip type={shift.type} />
+                          <div className="flex justify-end gap-1">
+                            <div className="flex items-center">
+                              {shift.type === "time" ? (
+                                <TimePair shift={shift} className="justify-end" />
+                              ) : (
+                                <StatusChip type={shift.type} />
+                              )}
+                            </div>
+                            {lockInteractive && (
+                              <button
+                                type="button"
+                                aria-label={locked ? "Desbloquear día" : "Bloquear día"}
+                                aria-pressed={locked}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onCellLockToggle?.(s.id, d.index);
+                                }}
+                                className={cn(
+                                  "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border transition-all",
+                                  locked
+                                    ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                                    : "border-outline-variant/70 bg-card text-muted-foreground hover:border-primary/60 hover:text-primary active:scale-95",
+                                )}
+                              >
+                                {locked ? (
+                                  <Lock className="h-3.5 w-3.5" aria-hidden />
+                                ) : (
+                                  <LockOpen className="h-3.5 w-3.5" aria-hidden />
+                                )}
+                              </button>
                             )}
                           </div>
                           {note && <NotePreview text={note} />}

@@ -10,9 +10,10 @@ interface ScheduleGridRowProps {
   days: WeekDays | undefined;
   zebra: boolean;
   onCellClick?: (dayIndex: DayIndex) => void;
+  onCellLockToggle?: (dayIndex: DayIndex) => void;
 }
 
-export function ScheduleGridRow({ staff, weekStart, days, zebra, onCellClick }: ScheduleGridRowProps) {
+export function ScheduleGridRow({ staff, weekStart, days, zebra, onCellClick, onCellLockToggle }: ScheduleGridRowProps) {
   return (
     <tr className={cn(zebra && "bg-secondary-container")}>
       {/* Sticky Personal */}
@@ -36,6 +37,7 @@ export function ScheduleGridRow({ staff, weekStart, days, zebra, onCellClick }: 
             weekStart={weekStart}
             dayIndex={idx}
             onClick={onCellClick ? () => onCellClick(idx) : undefined}
+            onLockToggle={onCellLockToggle ? () => onCellLockToggle(idx) : undefined}
           />
         );
       })}

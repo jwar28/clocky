@@ -13,11 +13,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 interface ScheduleGridProps {
   /** Optional. When omitted, cells are rendered read-only (no hover, no click). */
   onCellClick?: (staffId: string, dayIndex: number) => void;
+  /** Optional. When omitted, the lock badge is read-only (not clickable). */
+  onCellLockToggle?: (staffId: string, dayIndex: number) => void;
   /** Optional. When omitted, the empty-week banner renders in read-only mode (no CTA). */
   onAssignWeek?: () => void;
 }
 
-export function ScheduleGrid({ onCellClick, onAssignWeek }: ScheduleGridProps) {
+export function ScheduleGrid({ onCellClick, onCellLockToggle, onAssignWeek }: ScheduleGridProps) {
   const weekStart = useUiStore((s) => s.weekStart);
   const siteFilter = useUiStore((s) => s.siteFilter);
 
@@ -105,6 +107,11 @@ export function ScheduleGrid({ onCellClick, onAssignWeek }: ScheduleGridProps) {
                   onCellClick={
                     onCellClick
                       ? (dayIndex) => onCellClick(s.id, dayIndex)
+                      : undefined
+                  }
+                  onCellLockToggle={
+                    onCellLockToggle
+                      ? (dayIndex) => onCellLockToggle(s.id, dayIndex)
                       : undefined
                   }
                 />

@@ -131,7 +131,26 @@ export function ScheduleEditSheet({
     [staffIds, staff],
   );
 
-  const canSave = staffIds.length > 0 && selectedDays.length > 0;
+  // Compute locked days for the (currently selected single staff, week) — used
+  // to mark which days the bulk update will skip when the user saves.
+  const lockedDaysForActiveStaff = useMemo<DayIndex[]>(() => {
+    if (!staffIds[0]) return [];
+    const days = byWeek[weekStart]?.find((e) => e.staffId === staffIds[0])?.days;
+    if (!days) return [];
+    return ([0, 1, 2, 3, 4, 5, 6] as const).filter((idx) => days[idx]?.locked === true);
+  }, [byWeek, staffIds, weekStart]);
+
+  // Effective save-days = selected minus locked.
+  const effectiveDays = useMemo(
+    () => selectedDays.filter((d) => !lockedDaysForActiveStaff.includes(d)),
+    [selectedDays, lockedDaysForActiveStaff],
+  );
+  const skippedLockedDays = useMemo(
+    () => selectedDays.filter((d) => lockedDaysForActiveStaff.includes(d)),
+    [selectedDays, lockedDaysForActiveStaff],
+  );
+
+  const canSave = staffIds.length > 0 && effectiveDays.length > 0;
 
   function applyShiftType(type: DayShift["type"]) {
     setShift((prev) => {
@@ -169,13 +188,21 @@ export function ScheduleEditSheet({
         staffIds.map((sid) => ({
           staffId: sid,
           weekStart,
-          selectedDays,
+          // For bulk ops we pass the full `selectedDays` — `mergeDays` preserves
+          // `locked` so locked days are skipped naturally. But if the active
+          // staff (when single-staff select) has locked days selected, we strip
+          // them out so the merge knows they shouldn't be touched.
+          selectedDays: staffIds.length === 1 ? effectiveDays : selectedDays,
           newShift: shiftWithNote,
         })),
       );
-      const slots = staffIds.length * selectedDays.length;
+      const slots = staffIds.length * effectiveDays.length;
+      const skipMsg =
+        skippedLockedDays.length > 0
+          ? ` · ${skippedLockedDays.length} ${skippedLockedDays.length === 1 ? "día bloqueado omitido" : "días bloqueados omitidos"}`
+          : "";
       toast.success(
-        `Horarios guardados: ${written} ${written === 1 ? "empleado" : "empleados"} · ${slots} ${slots === 1 ? "día" : "días"}`,
+        `Horarios guardados: ${written} ${written === 1 ? "empleado" : "empleados"} · ${slots} ${slots === 1 ? "día" : "días"}${skipMsg}`,
       );
       onOpenChange(false);
     } catch (e) {
@@ -234,7 +261,11 @@ export function ScheduleEditSheet({
           {/* Step 2 — ¿QUÉ DÍAS? */}
           <section className="space-y-2.5">
             <SectionHeader step={2} label="¿Qué días?" />
-            <DayPicker value={selectedDays} onChange={setSelectedDays} />
+            <DayPicker
+              value={selectedDays}
+              onChange={setSelectedDays}
+              lockedDays={lockedDaysForActiveStaff}
+            />
           </section>
 
           {/* Step 3 — ¿QUÉ TURNO? */}

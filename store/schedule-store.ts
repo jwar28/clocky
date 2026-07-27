@@ -27,6 +27,17 @@ interface ScheduleState {
       newShift: DayShift;
     }>,
   ) => Promise<number>;
+  /**
+   * Toggle the `locked` flag on a single (staff, day) pair within a week.
+   * No-op when the target day is already in the desired state.
+   * Creates the week's schedule row on the fly if missing.
+   */
+  toggleDayLock: (
+    staffId: string,
+    weekStart: string,
+    dayIndex: DayIndex,
+    nextLocked?: boolean,
+  ) => Promise<boolean>;
   removeSchedule: (staffId: string, weekStart: string) => Promise<void>;
   reset: () => void;
 }
@@ -193,6 +204,57 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
       return results.length;
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Error al guardar horarios";
+      set({ error: msg });
+      throw e;
+    }
+  },
+
+  async toggleDayLock(staffId, weekStart, dayIndex, nextLocked) {
+    try {
+      const state = get();
+      const existingEntry = state.byWeek[weekStart]?.find((e) => e.staffId === staffId);
+      const existingDay = existingEntry?.days[dayIndex] ?? { type: "rest" as const };
+      const currentLocked = existingDay.locked === true;
+      const targetLocked = typeof nextLocked === "boolean" ? nextLocked : !currentLocked;
+      if (currentLocked === targetLocked) {
+        return currentLocked;
+      }
+
+      const baseDays: WeekDays = existingEntry
+        ? { ...existingEntry.days }
+        : defaultDays();
+      baseDays[dayIndex] = {
+        ...existingDay,
+        type: existingDay.type ?? "rest",
+        locked: targetLocked,
+      };
+
+      const insforge = getInsForge();
+      const { data, error } = await insforge.database
+        .from("schedules")
+        .upsert(
+          {
+            staff_id: staffId,
+            week_start: weekStart,
+            days: baseDays,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "staff_id,week_start" },
+        )
+        .select("id, staff_id, week_start, days, created_at")
+        .single();
+      if (error) throw new Error(error.message);
+      const upserted = mapRow(data as unknown as ScheduleRow);
+      set((s) => {
+        const list = s.byWeek[weekStart] ?? [];
+        const without = list.filter((x) => x.staffId !== staffId);
+        return {
+          byWeek: { ...s.byWeek, [weekStart]: [...without, upserted] },
+        };
+      });
+      return targetLocked;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Error al actualizar bloqueo";
       set({ error: msg });
       throw e;
     }
