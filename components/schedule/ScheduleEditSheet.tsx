@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Save, Trash2 } from "lucide-react";
+import { Save, Trash2, StickyNote } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils/cn";
 import { WEEK_DAY_LABELS } from "@/lib/constants";
 import { useStaffStore } from "@/store/staff-store";
@@ -56,7 +57,7 @@ function shiftFromType(type: DayShift["type"]): DayShift {
   return { type };
 }
 
-function SectionHeader({ step, label }: { step: 1 | 2 | 3; label: string }) {
+function SectionHeader({ step, label }: { step: 1 | 2 | 3 | 4; label: string }) {
   return (
     <h3 className="flex items-center gap-2 font-display text-table-header uppercase tracking-wide text-primary">
       <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[11px] leading-none text-primary-foreground">
@@ -86,6 +87,8 @@ export function ScheduleEditSheet({
   const [selectedDays, setSelectedDays] = useState<DayIndex[]>([]);
   // ---- Step 3: Shift ----
   const [shift, setShift] = useState<DayShift>(shiftFromType("time"));
+  // ---- Step 4: Note ----
+  const [note, setNote] = useState<string>("");
   const [saving, setSaving] = useState(false);
 
   // Initial state when sheet opens
@@ -103,14 +106,21 @@ export function ScheduleEditSheet({
       initialDayIndex !== null && initialDayIndex !== undefined ? [initialDayIndex] : [];
     setSelectedDays(days);
 
-    // shift: pre-fill from existing schedule of (staff, day) when both are provided
+    // shift + note: pre-fill from existing schedule of (staff, day) when both are provided
     if (nextStaffIds[0] && days[0] !== undefined) {
       const existing = byWeek[weekStart]
         ?.find((e) => e.staffId === nextStaffIds[0])
         ?.days[days[0]];
-      setShift(existing ? { ...existing } : shiftFromType("time"));
+      if (existing) {
+        setShift({ ...existing });
+        setNote(existing.note ?? "");
+      } else {
+        setShift(shiftFromType("time"));
+        setNote("");
+      }
     } else {
       setShift(shiftFromType("time"));
+      setNote("");
     }
     // We intentionally read byWeek as the source of truth, so don't include it in deps
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -124,19 +134,43 @@ export function ScheduleEditSheet({
   const canSave = staffIds.length > 0 && selectedDays.length > 0;
 
   function applyShiftType(type: DayShift["type"]) {
-    setShift(shiftFromType(type));
+    setShift((prev) => {
+      const trimmed = note.trim();
+      if (type === "time") {
+        return { type: "time", ...DEFAULT_TIME, ...(trimmed ? { note: trimmed } : {}) };
+      }
+      return { type, ...(trimmed ? { note: trimmed } : {}) };
+    });
+  }
+
+  function applyNote(next: string) {
+    const trimmed = next;
+    setNote(trimmed);
+    setShift((prev) => {
+      const value = trimmed.trim();
+      const { note: _ignored, ...rest } = prev;
+      if (!value) return rest;
+      return { ...rest, note: value };
+    });
   }
 
   async function onSave() {
     if (!canSave) return;
     setSaving(true);
     try {
+      const trimmedNote = note.trim();
+      const shiftWithNote: DayShift = trimmedNote
+        ? { ...shift, note: trimmedNote }
+        : (() => {
+            const { note: _n, ...rest } = shift;
+            return rest;
+          })();
       const written = await bulkUpsert(
         staffIds.map((sid) => ({
           staffId: sid,
           weekStart,
           selectedDays,
-          newShift: shift,
+          newShift: shiftWithNote,
         })),
       );
       const slots = staffIds.length * selectedDays.length;
@@ -166,6 +200,9 @@ export function ScheduleEditSheet({
       setSaving(false);
     }
   }
+
+  const noteLength = note.length;
+  const noteTooLong = noteLength > 500;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -237,7 +274,7 @@ export function ScheduleEditSheet({
                     id="start"
                     type="time"
                     value={shift.start ?? DEFAULT_TIME.start}
-                    onChange={(e) => setShift({ type: "time", start: e.target.value, end: shift.end ?? DEFAULT_TIME.end })}
+                    onChange={(e) => setShift({ ...shift, start: e.target.value })}
                   />
                 </div>
                 <div className="space-y-1">
@@ -246,11 +283,48 @@ export function ScheduleEditSheet({
                     id="end"
                     type="time"
                     value={shift.end ?? DEFAULT_TIME.end}
-                    onChange={(e) => setShift({ type: "time", start: shift.start ?? DEFAULT_TIME.start, end: e.target.value })}
+                    onChange={(e) => setShift({ ...shift, end: e.target.value })}
                   />
                 </div>
               </div>
             )}
+          </section>
+
+          {/* Step 4 — OBSERVACIONES */}
+          <section className="space-y-2">
+            <SectionHeader step={4} label="Observaciones" />
+            <div className="rounded-md border border-outline-variant bg-card p-3">
+              <div className="flex items-start gap-2">
+                <StickyNote className="mt-2 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                <div className="flex-1 space-y-1">
+                  <Label htmlFor="note" className="sr-only">
+                    Observaciones
+                  </Label>
+                  <Textarea
+                    id="note"
+                    placeholder="Ej. Cambio de horario por visita médica."
+                    value={note}
+                    onChange={(e) => applyNote(e.target.value)}
+                    rows={3}
+                    maxLength={500}
+                    className="resize-y"
+                  />
+                  <div className="flex items-center justify-between text-[11px]">
+                    <p className="text-muted-foreground">
+                      Opcional. Se mostrará debajo del horario y en el tooltip del día.
+                    </p>
+                    <span
+                      className={cn(
+                        "tabular-nums",
+                        noteTooLong ? "text-destructive" : "text-muted-foreground",
+                      )}
+                    >
+                      {noteLength}/500
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </section>
 
           {/* Preview */}
@@ -286,6 +360,7 @@ export function ScheduleEditSheet({
             .map((d) => d.long)
             .join(", ")}
           . Turno: {shift.type}.
+          {note ? ` Observación: ${note}` : ""}
         </span>
       </SheetContent>
     </Sheet>

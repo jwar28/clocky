@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, StickyNote } from "lucide-react";
 import { WEEK_DAY_LABELS } from "@/lib/constants";
 import { dayDate, formatWeekLabel } from "@/lib/utils/date";
 import { format } from "date-fns";
@@ -50,11 +50,12 @@ export function MobileScheduleCards({ staff, byStaffDays, weekStart, onCellClick
                     const shift = days?.[d.index] ?? { type: "rest" as const };
                     const dateLabel = format(dayDate(weekStart, d.index), "EEE d", { locale: es });
                     const interactive = Boolean(onCellClick);
+                    const note = shift.note?.trim() ?? "";
                     return (
                       <li
                         key={d.index}
                         className={cn(
-                          "flex items-center justify-between gap-3 px-4 py-2.5",
+                          "flex items-start justify-between gap-3 px-4 py-2.5",
                           interactive && "cursor-pointer hover:bg-muted focus-visible:bg-muted focus-visible:outline-none",
                         )}
                         onClick={interactive ? () => onCellClick?.(s.id, d.index) : undefined}
@@ -72,11 +73,14 @@ export function MobileScheduleCards({ staff, byStaffDays, weekStart, onCellClick
                           <div className="text-body-sm text-muted-foreground capitalize">{dateLabel}</div>
                         </div>
                         <div className="min-w-0 flex-1 text-right">
-                          {shift.type === "time" ? (
-                            <TimePair shift={shift} className="justify-end" />
-                          ) : (
-                            <StatusChip type={shift.type} />
-                          )}
+                          <div className="flex justify-end">
+                            {shift.type === "time" ? (
+                              <TimePair shift={shift} className="justify-end" />
+                            ) : (
+                              <StatusChip type={shift.type} />
+                            )}
+                          </div>
+                          {note && <NotePreview text={note} />}
                         </div>
                       </li>
                     );
@@ -87,6 +91,35 @@ export function MobileScheduleCards({ staff, byStaffDays, weekStart, onCellClick
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function NotePreview({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div className="mt-1.5 flex flex-col items-end gap-1">
+      {expanded ? (
+        <div className="flex max-w-full min-w-0 items-start gap-1 self-end rounded bg-secondary-container/60 px-1.5 py-1 text-[11px] leading-snug text-on-secondary-container">
+          <StickyNote className="mt-[2px] h-3 w-3 shrink-0 opacity-80" aria-hidden />
+          <span className="min-w-0 flex-1 whitespace-pre-wrap break-words text-left">{text}</span>
+        </div>
+      ) : (
+        <div className="flex w-fit max-w-full items-center gap-1 rounded bg-secondary-container/60 px-1.5 py-1 text-[11px] leading-snug text-on-secondary-container">
+          <StickyNote className="h-3 w-3 shrink-0 opacity-80" aria-hidden />
+          <span className="min-w-0 truncate text-left">{text}</span>
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          setExpanded((v) => !v);
+        }}
+        className="text-[11px] font-medium text-primary underline-offset-2 hover:underline"
+      >
+        {expanded ? "Ver menos" : "Ver más"}
+      </button>
     </div>
   );
 }

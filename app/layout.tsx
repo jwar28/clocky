@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Hanken_Grotesk } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -24,7 +25,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="es" className={`${inter.variable} ${hanken.variable}`}>
       <body className="min-h-screen bg-background text-foreground font-sans antialiased">
-        {children}
+        <TooltipProvider delayDuration={150} skipDelayDuration={300}>
+          {children}
+        </TooltipProvider>
         <Toaster richColors position="top-right" />
       </body>
     </html>

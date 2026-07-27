@@ -9,6 +9,8 @@ export interface DayShift {
   type: ShiftType;
   start?: string; // 'HH:mm' when type === 'time'
   end?: string;   // 'HH:mm' when type === 'time'
+  /** Free-text observation/notes for the day. Undefined when none. */
+  note?: string;
 }
 
 /** Indexes (Sunday-first): 0=Dom, 1=Lun, 2=Mar, 3=Mié, 4=Jue, 5=Vie, 6=Sáb */
