@@ -98,3 +98,32 @@ function getWeekOfMonth(date: Date): number {
   const offset = first.getDay();
   return Math.floor((date.getDate() + offset - 1) / 7) + 1;
 }
+/**
+ * Compact range label for the top bar: "1 – 7 nov 2026",
+ * "29 nov – 5 dic 2026", "27 dic 2026 – 2 ene 2027".
+ */
+export function formatRangeLabel(weekStartISO: string): string {
+  const sunday = parseISO(weekStartISO);
+  const saturday = addDays(sunday, 6);
+  const m = (d: Date) => format(d, "MMM", { locale: es }).replace(".", "");
+  if (sunday.getFullYear() !== saturday.getFullYear()) {
+    return `${format(sunday, "d")} ${m(sunday)} ${format(sunday, "yyyy")} – ${format(saturday, "d")} ${m(saturday)} ${format(saturday, "yyyy")}`;
+  }
+  if (sunday.getMonth() !== saturday.getMonth()) {
+    return `${format(sunday, "d")} ${m(sunday)} – ${format(saturday, "d")} ${m(saturday)} ${format(saturday, "yyyy")}`;
+  }
+  return `${format(sunday, "d")} – ${format(saturday, "d")} ${m(saturday)} ${format(saturday, "yyyy")}`;
+}
+
+/** Current wall-clock minutes since midnight in Colombia (0–1439). */
+export function nowMinutesInBogota(): number {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "America/Bogota",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date());
+  const h = Number(parts.find((p) => p.type === "hour")?.value ?? 0);
+  const min = Number(parts.find((p) => p.type === "minute")?.value ?? 0);
+  return h * 60 + min;
+}

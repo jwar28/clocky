@@ -2,40 +2,27 @@
 
 import { CalendarPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils/cn";
 
 interface EmptyWeekBannerProps {
-  /**
-   * Optional. When provided, shows the "Asignar turnos" CTA.
-   * Omit to render the banner in read-only mode (e.g. for /equipo).
-   */
+  /** When provided, shows the "Asignar turnos" action. Omit for read-only views (/equipo). */
   onAssign?: () => void;
 }
 
-/**
- * Inline banner shown above the grid when the current week has no schedules
- * assigned. In admin mode, surfaces a CTA to assign shifts. In public/reader
- * mode, just informs that the week is empty.
- */
+/** Shown above the timeline when nobody has shifts in the visible week. */
 export function EmptyWeekBanner({ onAssign }: EmptyWeekBannerProps) {
-  const readOnly = !onAssign;
   return (
-    <div
-      className={cn(
-        "mb-3 flex flex-col items-start justify-between gap-2 rounded-md border border-tertiary-container/40 bg-tertiary-fixed/30 px-4 py-3 sm:flex-row sm:items-center",
-      )}
-    >
+    <div className="flex flex-col items-start justify-between gap-3 rounded-lg border border-dashed border-input bg-muted/60 px-4 py-3 sm:flex-row sm:items-center">
       <div>
-        <p className="text-body-sm font-medium text-ink">Esta semana no tiene turnos asignados.</p>
-        <p className="text-xs text-muted-foreground">
-          {readOnly
-            ? "La grilla se muestra vacía (Descanso por default)."
-            : "La grilla se muestra vacía (Descanso por default). Usa el botón para empezar."}
+        <p className="text-sm font-bold text-foreground">Esta semana todavía no tiene turnos</p>
+        <p className="text-[13px] text-muted-foreground">
+          {onAssign
+            ? "Asigna turnos a varias personas a la vez, o haz clic en el día de alguien en la malla."
+            : "El equipo aún no ha publicado los turnos de esta semana."}
         </p>
       </div>
       {onAssign && (
-        <Button onClick={onAssign} size="sm" className="text-white">
-          <CalendarPlus className="mr-1.5 h-4 w-4" />
+        <Button onClick={onAssign} className="h-9 shrink-0 font-bold">
+          <CalendarPlus />
           Asignar turnos
         </Button>
       )}

@@ -12,7 +12,7 @@ export function Brand({ collapsed = false, className }: BrandProps) {
   return (
     <span
       className={cn(
-        "font-display font-bold tracking-tight text-primary",
+        "font-extrabold tracking-tight",
         collapsed ? "text-base" : "text-xl",
         className,
       )}

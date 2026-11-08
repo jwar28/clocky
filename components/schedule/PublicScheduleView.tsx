@@ -9,6 +9,7 @@ import { ScheduleGrid } from "@/components/schedule/ScheduleGrid";
 import { MobileScheduleCards } from "@/components/schedule/MobileScheduleCards";
 import { WeekNavigator } from "@/components/schedule/WeekNavigator";
 import { SiteFilter } from "@/components/layout/SiteFilter";
+import { worksAtSite } from "@/lib/utils/site";
 
 /**
  * Read-only schedule view shared by `/equipo` (public) and any other place
@@ -49,8 +50,8 @@ export function PublicScheduleView() {
   }, [sitesFetched, sitesFetch]);
 
   const filteredStaff = useMemo(
-    () => (siteFilter ? staff.filter((s) => s.defaultSite === siteFilter) : staff),
-    [staff, siteFilter],
+    () => staff.filter((s) => worksAtSite(s, byWeek[weekStart]?.find((r) => r.staffId === s.id)?.days, siteFilter)),
+    [staff, siteFilter, byWeek, weekStart],
   );
 
   const sites = useMemo(
@@ -59,17 +60,16 @@ export function PublicScheduleView() {
   );
 
   return (
-    <div>
-      <div className="sticky top-14 z-20 flex flex-wrap items-center justify-between gap-3 border-b border-outline-variant bg-background/95 px-4 py-2.5 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:px-6">
+    <div className="flex h-[calc(100dvh-3.5rem)] flex-col">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border bg-background px-4 py-2.5 sm:px-5">
         <WeekNavigator weekStart={weekStart} onChange={setWeekStart} />
         <SiteFilter value={siteFilter} sites={sites} onChange={setSiteFilter} />
       </div>
 
-      <div className="px-4 py-4 sm:px-6 sm:py-5">
-        <div className="hidden md:block">
-          {/* Read-only: omit onCellClick and onAssignWeek */}
-          <ScheduleGrid />
-        </div>
+      {/* Read-only: no onCellClick / onAssignWeek */}
+      <ScheduleGrid className="hidden flex-1 md:flex" />
+
+      <div className="flex-1 overflow-y-auto px-4 py-4 md:hidden">
         <MobileScheduleCards
           staff={filteredStaff}
           weekStart={weekStart}

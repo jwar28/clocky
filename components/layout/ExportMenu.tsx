@@ -17,6 +17,7 @@ import { exportMonthToExcel, exportWeekToExcel } from "@/lib/utils/excel-export"
 import { useStaffStore } from "@/store/staff-store";
 import { useScheduleStore } from "@/store/schedule-store";
 import { useUiStore } from "@/store/ui-store";
+import { worksAtSite } from "@/lib/utils/site";
 import type { WeekDays } from "@/lib/types";
 
 interface ExportMenuProps {
@@ -32,12 +33,13 @@ export function ExportMenu({ siteFilter }: ExportMenuProps) {
 
   const [busy, setBusy] = useState<null | "week" | "month">(null);
 
+  // Filter by where people actually work this week (rotations included).
   const staff = useMemo(
     () =>
-      siteFilter
-        ? allStaff.filter((s) => s.defaultSite === siteFilter)
-        : allStaff,
-    [allStaff, siteFilter],
+      allStaff.filter((s) =>
+        worksAtSite(s, byWeek[weekStart]?.find((r) => r.staffId === s.id)?.days, siteFilter ?? ""),
+      ),
+    [allStaff, siteFilter, byWeek, weekStart],
   );
 
   const byStaffDays = useMemo(() => {
@@ -71,6 +73,8 @@ export function ExportMenu({ siteFilter }: ExportMenuProps) {
         weekStart,
         staff,
         byStaffDays,
+        daysForWeek: (ws, sid) =>
+          useScheduleStore.getState().byWeek[ws]?.find((r) => r.staffId === sid)?.days,
         fetchWeek,
         filterLabel: siteFilter || undefined,
       });
@@ -87,13 +91,13 @@ export function ExportMenu({ siteFilter }: ExportMenuProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" disabled={disabled} aria-label="Exportar a Excel">
+        <Button variant="outline" disabled={disabled} aria-label="Exportar a Excel" className="h-9 shrink-0 px-3 xl:px-4">
           {busy ? (
-            <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+            <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
-            <Download className="mr-1.5 h-4 w-4" />
+            <Download className="h-4 w-4" />
           )}
-          <span className="hidden sm:inline">Exportar</span>
+          <span className="hidden xl:inline">Exportar</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-[220px]">

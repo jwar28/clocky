@@ -3,6 +3,25 @@
 import { create } from "zustand";
 import { getInsForge } from "@/lib/insforge";
 import { useStaffStore } from "@/store/staff-store";
+import { useScheduleStore } from "@/store/schedule-store";
+import type { WeekDays } from "@/lib/types";
+
+type ScheduleDaysRow = { id: string; days: WeekDays };
+
+/** All schedule rows whose days rotate to the sede `name`. Small team → a full scan is fine. */
+async function schedulesUsingSite(name: string): Promise<ScheduleDaysRow[]> {
+  const { data, error } = await getInsForge().database.from("schedules").select("id, days");
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as unknown as ScheduleDaysRow[]).filter((r) =>
+    Object.values(r.days ?? {}).some((d) => d?.site === name),
+  );
+}
+
+/** Number of days (across all weeks) assigned to sede `name` as a rotation. */
+export async function countSiteRotationDays(name: string): Promise<number> {
+  const rows = await schedulesUsingSite(name);
+  return rows.reduce((n, r) => n + Object.values(r.days).filter((d) => d?.site === name).length, 0);
+}
 
 export interface TaxonomyItem {
   id: string;
@@ -112,6 +131,38 @@ function createTaxonomyStore(table: "sites" | "roles") {
           console.warn(`[taxonomy:${table}] cascade update warning:`, sError.message);
         }
 
+        // 2b) Sedes also live on schedule days (rotations) — rename them there too.
+        if (table === "sites") {
+          const rows = await schedulesUsingSite(oldName);
+          const renamed = rows.map((r) => {
+            const days = { ...r.days } as WeekDays;
+            for (const k of Object.keys(days) as unknown as Array<keyof WeekDays>) {
+              if (days[k]?.site === oldName) days[k] = { ...days[k], site: trimmed };
+            }
+            return { id: r.id, days };
+          });
+          await Promise.all(
+            renamed.map((r) =>
+              insforge.database
+                .from("schedules")
+                .update({ days: r.days, updated_at: new Date().toISOString() })
+                .eq("id", r.id)
+                .then(({ error }) => {
+                  if (error) throw new Error(error.message);
+                }),
+            ),
+          );
+          const byId = new Map(renamed.map((r) => [r.id, r.days]));
+          useScheduleStore.setState((s) => ({
+            byWeek: Object.fromEntries(
+              Object.entries(s.byWeek).map(([wk, list]) => [
+                wk,
+                list.map((row) => (byId.has(row.id) ? { ...row, days: byId.get(row.id)! } : row)),
+              ]),
+            ),
+          }));
+        }
+
         // 3) Refresh local caches
         set({
           items: get()
@@ -144,6 +195,14 @@ function createTaxonomyStore(table: "sites" | "roles") {
         throw new Error(
           `No se puede eliminar "${item.name}": está en uso por ${usage} empleado${usage === 1 ? "" : "s"}.`,
         );
+      }
+      if (table === "sites") {
+        const rotationDays = await countSiteRotationDays(item.name);
+        if (rotationDays > 0) {
+          throw new Error(
+            `No se puede eliminar "${item.name}": tiene ${rotationDays} día${rotationDays === 1 ? "" : "s"} de rotación asignado${rotationDays === 1 ? "" : "s"} en la malla.`,
+          );
+        }
       }
       try {
         const insforge = getInsForge();

@@ -3,6 +3,7 @@ import { WEEK_DAY_LABELS, AREA_LABEL } from "@/lib/constants";
 import type { DayIndex, DayShift, Staff, WeekDays, WeeklySchedule } from "@/lib/types";
 import { dayHeaderNumber, dayISO, isToday } from "@/lib/utils/date";
 import { formatTimeAMPM } from "@/lib/utils/shift";
+import { weekSiteSummary } from "@/lib/utils/site";
 
 // ─── Color tokens (mirror of globals.css but as ARGB strings for ExcelJS) ──
 // 0xFF prefix = full alpha (required by ExcelJS).
@@ -92,7 +93,7 @@ function buildWeekSheet(
   // ── Data rows ──
   staff.forEach((s, idx) => {
     const days = byStaffDays(s.id) ?? ({} as WeekDays);
-    const rowValues: (string | number)[] = [s.fullName, s.defaultSite || ""];
+    const rowValues: (string | number)[] = [s.fullName, weekSiteSummary(s, byStaffDays(s.id)).label];
     for (const d of WEEK_DAY_LABELS) {
       const shift = days[d.index] ?? { type: "rest" as const };
       rowValues.push(shiftToCellText(shift));
@@ -198,6 +199,8 @@ export interface ExportMonthArgs {
   weekStart: string;
   staff: Staff[];
   byStaffDays: (staffId: string) => WeekDays | undefined;
+  /** Days for any week of the month — read after fetchWeek so every sheet gets its own week. */
+  daysForWeek?: (weekStart: string, staffId: string) => WeekDays | undefined;
   /** Fetch function for additional weeks (in case the store hasn't pre-loaded them). */
   fetchWeek?: (weekStart: string) => Promise<void>;
   filterLabel?: string;
@@ -243,7 +246,9 @@ function getWeeksInMonth(weekStart: string): string[] {
 }
 
 export async function exportMonthToExcel(args: ExportMonthArgs): Promise<void> {
-  const { weekStart, staff, byStaffDays, fetchWeek, filterLabel } = args;
+  const { weekStart, staff, byStaffDays, daysForWeek, fetchWeek, filterLabel } = args;
+  const daysOf = (ws: string) => (sid: string) =>
+    daysForWeek ? daysForWeek(ws, sid) : ws === weekStart ? byStaffDays(sid) : undefined;
 
   // 1) Compute all weeks that overlap with the month
   const weeks = getWeeksInMonth(weekStart);
@@ -265,7 +270,7 @@ export async function exportMonthToExcel(args: ExportMonthArgs): Promise<void> {
 
   // ── Summary sheet (compact month view) ──
   const summary = workbook.addWorksheet("Resumen");
-  buildSummarySheet(summary, weeks, staff, byStaffDays, filterLabel);
+  buildSummarySheet(summary, weeks, staff, (ws, sid) => daysOf(ws)(sid), filterLabel);
 
   // ── One sheet per week ──
   for (const ws of weeks) {
@@ -273,7 +278,7 @@ export async function exportMonthToExcel(args: ExportMonthArgs): Promise<void> {
     const title = filterLabel
       ? `Malla Horaria — ${sheetName} (${filterLabel})`
       : `Malla Horaria — ${sheetName}`;
-    buildWeekSheet(workbook, sheetName, ws, staff, byStaffDays, title);
+    buildWeekSheet(workbook, sheetName, ws, staff, daysOf(ws), title);
   }
 
   const buffer = await workbook.xlsx.writeBuffer();
@@ -289,7 +294,7 @@ function buildSummarySheet(
   sheet: ExcelJS.Worksheet,
   weeks: string[],
   staff: Staff[],
-  byStaffDays: (staffId: string) => WeekDays | undefined,
+  daysFor: (weekStart: string, staffId: string) => WeekDays | undefined,
   filterLabel: string | undefined,
 ): void {
   // Title
@@ -335,7 +340,6 @@ function buildSummarySheet(
 
   // Data rows: each staff, each day = abbreviated cell
   staff.forEach((s, idx) => {
-    const days = byStaffDays(s.id) ?? ({} as WeekDays);
     const rowValues: (string | number)[] = [s.fullName];
     // Compute which date corresponds to each column (colNumber >= 2)
     const columnDateISOs: string[] = allDays.map((ad) => ad.dateISO);
@@ -353,7 +357,7 @@ function buildSummarySheet(
         const target = new Date(ad.dateISO + "T00:00:00");
         const diff = Math.round((target.getTime() - start.getTime()) / (24 * 60 * 60 * 1000));
         const dayIndex = diff as DayIndex;
-        const shift = days[dayIndex] ?? { type: "rest" as const };
+        const shift = daysFor(wkStart, s.id)?.[dayIndex] ?? { type: "rest" as const };
         cellText = shiftToAbbreviation(shift);
       }
       rowValues.push(cellText);

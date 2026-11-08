@@ -8,103 +8,86 @@
    ========================================================================= */
 @layer base {
   :root {
-    /* Core surface (workspace) */
-    --background: 199 100% 97%;        /* #f4faff */
-    --foreground: 199 46% 10%;         /* #111d23 */
+    /* Gráfico de marcha — white ground, ink, hairlines; green only for action/today/now */
+    --background: 0 0% 100%;
+    --foreground: 150 27% 8%;            /* #0F1A14 */
 
-    /* Card / Popover */
-    --card: 0 0% 100%;                 /* #ffffff */
-    --card-foreground: 199 46% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 150 27% 8%;
     --popover: 0 0% 100%;
-    --popover-foreground: 199 46% 10%;
+    --popover-foreground: 150 27% 8%;
 
-    /* Primary — brand green (#009B4D = 152 100% 31%) */
-    --primary: 152 100% 31%;
+    /* Brand green #009B4D */
+    --primary: 150 100% 30%;
     --primary-foreground: 0 0% 100%;
-    --primary-container: 149 100% 26%;   /* #008542 */
-    --on-primary-container: 125 100% 97%;/* #f6fff3 */
-    --primary-fixed: 137 94% 74%;        /* #80fba1 */
-    --inverse-primary: 135 67% 63%;      /* #62de87 */
+    --primary-container: 149 100% 26%;
+    --on-primary-container: 125 100% 97%;
+    --primary-fixed: 146 49% 91%;        /* #E6F4EC */
+    --inverse-primary: 135 67% 63%;
 
-    /* Secondary — neutral cool gray-green */
-    --secondary: 112 5% 36%;             /* #556158 */
+    --secondary: 143 8% 35%;
     --secondary-foreground: 0 0% 100%;
-    --secondary-container: 120 17% 87%;  /* #d9e6da */
-    --on-secondary-container: 132 6% 38%;/* #5b675e */
-    --secondary-fixed: 120 17% 87%;
-    --secondary-fixed-dim: 113 11% 73%;  /* #bdcabe */
+    --secondary-container: 146 30% 95%;  /* #EEF5F1 */
+    --on-secondary-container: 150 47% 19%;
+    --secondary-fixed: 146 30% 95%;
+    --secondary-fixed-dim: 145 10% 83%;
 
-    /* Tertiary — amber for Disponible / Amanece */
-    --tertiary: 35 100% 25%;             /* #805200 */
+    /* Amber — Disponible */
+    --tertiary: 36 86% 25%;              /* #774A09 */
     --tertiary-foreground: 0 0% 100%;
-    --tertiary-container: 33 100% 32%;   /* #a16800 */
+    --tertiary-container: 37 77% 45%;    /* #C9821A */
     --on-tertiary-container: 0 0% 100%;
-    --tertiary-fixed: 31 100% 85%;       /* #ffddb5 */
-    --tertiary-fixed-dim: 35 100% 67%;   /* #ffb957 */
+    --tertiary-fixed: 38 100% 96%;       /* #FFF8EC */
+    --tertiary-fixed-dim: 40 100% 92%;
 
-    /* Error */
-    --destructive: 0 75% 41%;            /* #ba1a1a */
+    --destructive: 0 75% 41%;
     --destructive-foreground: 0 0% 100%;
-    --destructive-container: 7 100% 92%; /* #ffdad6 */
-    --on-destructive-container: 355 100% 29%; /* #93000a */
+    --destructive-container: 7 100% 92%;
+    --on-destructive-container: 355 100% 29%;
 
-    /* Muted / accent */
-    --muted: 204 47% 88%;                /* #d7e4ec */
-    --muted-foreground: 199 25% 18%;     /* #263238 */
-    --accent: 120 17% 87%;
-    --accent-foreground: 132 6% 38%;
+    --muted: 150 14% 96%;                /* #F3F6F4 */
+    --muted-foreground: 143 8% 35%;      /* #526158 */
+    --accent: 146 30% 95%;
+    --accent-foreground: 150 47% 19%;
 
-    /* Borders */
-    --border: 115 11% 73%;               /* #bdcabb */
-    --input: 115 11% 73%;
-    --ring: 152 100% 31%;
-    --outline: 120 6% 45%;               /* #6d7a6d */
-    --outline-variant: 115 11% 73%;      /* #bdcabb */
+    --border: 146 10% 90%;               /* #E3E8E5 */
+    --input: 144 8% 81%;                 /* #CBD3CE */
+    --ring: 150 100% 30%;
+    --outline: 143 8% 45%;
+    --outline-variant: 146 10% 90%;
 
-    /* Surfaces (extended Material-3 style) */
-    --surface: 199 100% 97%;             /* #f4faff */
-    --surface-dim: 203 28% 86%;          /* #cfdce4 */
-    --surface-bright: 199 100% 97%;
+    --surface: 0 0% 100%;
+    --surface-dim: 150 14% 96%;
+    --surface-bright: 0 0% 100%;
     --surface-container-lowest: 0 0% 100%;
-    --surface-container-low: 203 88% 96%;/* #e9f6fd */
-    --surface-container: 204 65% 93%;    /* #e3f0f8 */
-    --surface-container-high: 204 56% 90%; /* #ddeaf2 */
-    --surface-container-highest: 204 47% 88%; /* #d7e4ec */
-    --surface-variant: 204 47% 88%;
-    --surface-tint: 151 100% 21%;        /* #006d34 */
+    --surface-container-low: 150 11% 98%; /* #FAFBFA */
+    --surface-container: 150 14% 96%;
+    --surface-container-high: 146 10% 93%;
+    --surface-container-highest: 146 10% 90%;
+    --surface-variant: 146 10% 90%;
+    --surface-tint: 150 100% 30%;
 
-    /* Inverse */
-    --inverse-surface: 199 25% 18%;      /* #263238 */
-    --inverse-on-surface: 202 75% 94%;   /* #e6f3fb */
+    --inverse-surface: 150 27% 8%;
+    --inverse-on-surface: 146 30% 95%;
 
-    /* shadcn sidebar tokens (aliased to existing design tokens) */
-    --sidebar: var(--card);
-    --sidebar-foreground: var(--foreground);
-    --sidebar-primary: var(--primary);
-    --sidebar-primary-foreground: var(--primary-foreground);
-    --sidebar-accent: var(--secondary-container);
-    --sidebar-accent-foreground: var(--on-secondary-container);
-    --sidebar-border: var(--outline-variant);
-    --sidebar-ring: var(--ring);
+    /* Project tokens */
+    --ink: 150 27% 8%;
+    --ink-muted: 143 8% 35%;
+    --grid: 146 9% 83%;                  /* #CFD8D3 day dividers */
+    --grid-soft: 146 10% 93%;            /* hour subticks */
+    --night: 233 52% 47%;                /* #3A47B8 */
 
-    /* Tokens específicos del proyecto */
-    --ink: 199 46% 10%;                  /* #111d23 */
-    --ink-muted: 120 9% 27%;             /* #3e4a3e */
-    --grid: 115 11% 73%;                 /* #bdcabb */
-    --grid-soft: 203 28% 86%;            /* #cfdce4 */
-    --night: 35 100% 58%;                /* #f9a825 — orange time pairs */                --sidebar-background: 0 0% 98%;                --sidebar-foreground: 240 5.3% 26.1%;                --sidebar-primary: 240 5.9% 10%;                --sidebar-primary-foreground: 0 0% 98%;                --sidebar-accent: 240 4.8% 95.9%;                --sidebar-accent-foreground: 240 5.9% 10%;                --sidebar-border: 220 13% 91%;                --sidebar-ring: 217.2 91.2% 59.8%;
-  }
+    /* Shift language — fixed, never reused for anything else */
+    --shift-day: 146 49% 91%;            /* #DDF2E6 */
+    --shift-day-rule: 152 69% 28%;       /* #16794A */
+    --shift-day-ink: 151 75% 19%;        /* #0C5532 */
+    --shift-night: 233 52% 47%;          /* #3A47B8 */
+    --shift-night-ink: 0 0% 100%;
+    --available: 35 77% 45%;             /* #C9821A */
+    --available-bg: 38 100% 96%;
+    --available-ink: 36 86% 25%;
 
-  /* No dark mode por ahora (single-org app) */
-  .dark {
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar: 150 11% 98%;
   }
 }
 
@@ -120,7 +103,16 @@
   }
   body {
     @apply bg-background text-foreground font-sans antialiased;
+    font-variant-numeric: tabular-nums;
     font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  ::selection {
+    background: hsl(var(--shift-day));
+    color: hsl(var(--shift-day-ink));
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--grid)) transparent;
   }
   /* Tabular nums everywhere monospace data appears */
   .tabular-nums, .font-mono {
@@ -129,32 +121,11 @@
 }
 
 @layer utilities {
-  /* Zebra striping for grid rows */
-  .row-zebra > tr:nth-child(even) > td {
-    background-color: hsl(var(--secondary-container));
-  }
   /* Grid border helpers */
   .border-grid {
     border-color: hsl(var(--grid));
   }
   .border-grid-soft {
     border-color: hsl(var(--grid-soft));
-  }
-  /* Sticky left columns (tablet) */
-  .sticky-col-left {
-    position: sticky;
-    left: 0;
-    z-index: 2;
-    background-color: inherit;
-  }
-  .sticky-col-left-2 {
-    position: sticky;
-    left: var(--col-staff-width, 14rem);
-    z-index: 2;
-    background-color: inherit;
-  }
-  /* Cell padding from DESIGN.md: table-cell-padding 12px 8px */
-  .cell-pad {
-    padding: 12px 8px;
   }
 }

@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><title>Clocky · Tablero de turnos</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Semi+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--g:#009B4D;--g-deep:#0E3B25;--g-ink:#E3F3E9;--board:#F6F7F5;--ink:#17221C;--ink2:#56645B;--rule:#DFE4E0;--am:#D9F0E2;--am-i:#0B5A31;--pm:#DCE6F5;--pm-i:#1E3F78;--nt:#24315E;--nt-i:#EEF1FF;--av:#F2B33D}
+*{box-sizing:border-box;margin:0}
+body{width:1440px;height:900px;overflow:hidden;font:500 14px/1.3 Barlow,sans-serif;color:var(--ink);background:var(--board);display:grid;grid-template-columns:256px 1fr;font-variant-numeric:tabular-nums}
+svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+aside{background:var(--g-deep);color:var(--g-ink);padding:18px 18px;display:flex;flex-direction:column;gap:22px}
+.brand{display:flex;align-items:center;gap:10px;font:700 20px Barlow;letter-spacing:-.01em;color:#fff}
+.brand i{width:30px;height:30px;border-radius:8px;background:var(--g);display:grid;place-items:center}
+.cta{display:flex;align-items:center;gap:10px;background:var(--g);color:#fff;border-radius:999px;padding:12px 18px;font-weight:600;width:max-content;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+.mini h4{font:600 14px Barlow;color:#fff;display:flex;justify-content:space-between;margin-bottom:8px}
+.mini table{width:100%;border-collapse:collapse;font-size:12px;text-align:center}
+.mini th{font-weight:500;color:#9FC2AE;padding:3px 0}.mini td{padding:5px 0;color:#CFE5D8}
+.mini td.o{color:#86A995}.mini tr.wk td{background:rgba(255,255,255,.08)}.mini tr.wk td:first-child{border-radius:999px 0 0 999px}.mini tr.wk td:last-child{border-radius:0 999px 999px 0}
+.mini td.t span{background:var(--g);color:#fff;border-radius:999px;display:inline-block;width:22px;height:22px;line-height:22px;font-weight:700}
+.grp h5{font:600 11px Barlow;letter-spacing:.08em;text-transform:uppercase;color:#8DB59E;margin-bottom:8px}
+.chk{display:flex;align-items:center;gap:10px;padding:5px 0;font-size:14px}
+.chk b{width:16px;height:16px;border-radius:4px;background:#fff;display:grid;place-items:center}.chk b::after{content:"";width:8px;height:4px;border:2px solid var(--g-deep);border-top:0;border-right:0;transform:rotate(-45deg) translateY(-1px)}
+.chk span{margin-left:auto;color:#8DB59E;font-size:12px}
+.lg{display:flex;align-items:center;gap:10px;padding:4px 0;font-size:13px}.lg i{width:26px;height:14px;border-radius:4px}
+main{display:grid;grid-template-rows:64px 1fr 40px;min-width:0}
+header{display:flex;align-items:center;gap:14px;padding:0 24px;background:#fff;border-bottom:1px solid var(--rule)}
+.btn{height:36px;padding:0 16px;border:1px solid #C9D1CC;border-radius:8px;display:flex;align-items:center;gap:8px;font-weight:600;background:#fff}
+.ic{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;color:var(--ink2)}
+h1{font:600 22px Barlow;letter-spacing:-.01em}
+.seg{margin-left:auto;display:flex;border:1px solid #C9D1CC;border-radius:8px;overflow:hidden}.seg span{padding:8px 14px;font-weight:600;color:var(--ink2)}.seg .on{background:var(--am);color:var(--am-i)}
+.search{width:240px;height:36px;border-radius:8px;background:#EEF1EF;display:flex;align-items:center;gap:8px;padding:0 12px;color:var(--ink2)}
+.av{width:34px;height:34px;border-radius:50%;background:#DCE6F5;color:var(--pm-i);display:grid;place-items:center;font-weight:700}
+.grid{display:grid;grid-template-columns:232px repeat(7,1fr);grid-auto-rows:min-content;overflow:hidden;padding:0 16px 0 0}
+.dh{padding:12px 8px 10px;text-align:center;border-bottom:1px solid var(--rule);background:var(--board)}
+.dh small{display:block;font:600 11px Barlow;letter-spacing:.08em;color:var(--ink2)}
+.dh b{font:600 24px Barlow;line-height:34px;display:inline-block;width:38px;height:38px;border-radius:50%}
+.dh.today small{color:var(--g)}.dh.today b{background:var(--g);color:#fff}
+.who{padding:10px 16px 10px 24px;border-bottom:1px solid var(--rule);display:flex;flex-direction:column;justify-content:center;height:72px}
+.who b{font:600 15px Barlow}.who span{font-size:12.5px;color:var(--ink2)}
+.c{border-bottom:1px solid var(--rule);border-left:1px solid var(--rule);padding:7px 6px;height:72px;position:relative}
+.c.today{background:rgba(0,155,77,.06)}
+.m{height:100%;border-radius:8px;padding:7px 10px;display:flex;flex-direction:column;justify-content:space-between;border-bottom:2px solid rgba(0,0,0,.12)}
+.m .t{font:600 16px/1 'Barlow Semi Condensed';letter-spacing:.01em}.m .d{font-size:12px;opacity:.88;display:flex;justify-content:space-between;align-items:center}
+.am{background:var(--am);color:var(--am-i)}.nt{background:var(--nt);color:var(--nt-i)}
+.rest{height:100%;border-radius:8px;border:1px dashed #AEB8B2;color:#56645B;display:grid;place-items:center;font-weight:600;font-size:13px;background:repeating-linear-gradient(135deg,transparent 0 6px,rgba(0,0,0,.03) 6px 12px)}
+.avl{height:100%;border-radius:8px;border:2px solid var(--av);color:#7A4B00;display:grid;place-items:center;font-weight:600;font-size:13px;background:#FFF7E6}
+.dawn{height:100%;border-radius:8px;background:#E6E9F4;color:var(--nt);display:flex;align-items:center;justify-content:center;gap:6px;font-weight:600;font-size:13px}
+.dawn svg{width:14px;height:14px}
+.sel{outline:2px solid var(--g);outline-offset:2px;box-shadow:0 6px 16px rgba(14,59,37,.22)}
+.note{position:absolute;top:4px;right:4px;width:16px;height:16px;border-radius:50%;background:#fff;color:var(--av);display:grid;place-items:center;box-shadow:0 0 0 1px #E8D3A5}.note svg{width:10px;height:10px;stroke-width:3}
+.lock svg{width:12px;height:12px}
+footer{border-top:1px solid var(--rule);background:#fff;display:flex;align-items:center;gap:28px;padding:0 24px;font-size:13px;color:var(--ink2)}footer b{color:var(--ink);font-weight:700}
+</style></head><body>
+<aside>
+ <div class="brand"><i><svg viewBox="0 0 24 24" style="color:#fff"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></i>Clocky</div>
+ <div class="cta"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Asignar turnos</div>
+ <div class="mini"><h4>Noviembre 2026 <span>‹ ›</span></h4>
+ <table><tr><th>D</th><th>L</th><th>M</th><th>M</th><th>J</th><th>V</th><th>S</th></tr>
+ <tr class="wk"><td>1</td><td>2</td><td>3</td><td>4</td><td>5</td><td>6</td><td class="t"><span>7</span></td></tr>
+ <tr><td>8</td><td>9</td><td>10</td><td>11</td><td>12</td><td>13</td><td>14</td></tr>
+ <tr><td>15</td><td>16</td><td>17</td><td>18</td><td>19</td><td>20</td><td>21</td></tr>
+ <tr><td>22</td><td>23</td><td>24</td><td>25</td><td>26</td><td>27</td><td>28</td></tr>
+ <tr><td>29</td><td>30</td><td class="o">1</td><td class="o">2</td><td class="o">3</td><td class="o">4</td><td class="o">5</td></tr></table></div>
+ <div class="grp"><h5>Sedes</h5>
+  <div class="chk"><b></b>Fontibón<span>2</span></div><div class="chk"><b></b>Fontibón-Noche<span>2</span></div><div class="chk"><b></b>Fontibón-OPL<span>1</span></div><div class="chk"><b></b>Funza<span>2</span></div><div class="chk"><b></b>Logika<span>1</span></div><div class="chk"><b></b>Madrid<span>1</span></div><div class="chk"><b></b>Sibaté<span>1</span></div></div>
+ <div class="grp"><h5>Franjas</h5>
+  <div class="lg"><i style="background:var(--am)"></i>Mañana · inicia 05–11</div><div class="lg"><i style="background:var(--pm)"></i>Tarde · inicia 12–19</div><div class="lg"><i style="background:var(--nt)"></i>Noche · cruza medianoche</div><div class="lg"><i style="border:2px solid var(--av);background:#FFF7E6"></i>Disponible</div><div class="lg"><i style="border:1px dashed #9DAAA2"></i>Descanso</div></div>
+</aside>
+<main>
+ <header><div class="btn">Hoy</div><div class="ic"><svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></div><div class="ic"><svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></div><h1>1 – 7 nov 2026</h1>
+  <div class="seg"><span>Día</span><span class="on">Semana</span><span>Persona</span></div>
+  <div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Buscar persona</div>
+  <div class="btn"><svg viewBox="0 0 24 24"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 20h14"/></svg>Exportar</div><div class="av">JG</div></header>
+ <div class="grid">
+  <div class="dh" style="text-align:left;padding-left:24px;display:flex;align-items:flex-end"><small>9 personas</small></div>
+  <div class="dh"><small>DOM</small><b>1</b></div><div class="dh"><small>LUN</small><b>2</b></div><div class="dh"><small>MAR</small><b>3</b></div><div class="dh"><small>MIÉ</small><b>4</b></div><div class="dh"><small>JUE</small><b>5</b></div><div class="dh"><small>VIE</small><b>6</b></div><div class="dh today"><small>SÁB · HOY</small><b>7</b></div>
+
+  <div class="who"><b>Simón Amaya</b><span>Fontibón · Operador logístico</span></div>
+  <div class="c"><div class="rest">Descanso</div></div><div class="c"><div class="m am"><span class="t">06:00 – 15:00</span><span class="d">9 h</span></div></div><div class="c"><div class="m am"><span class="t">06:00 – 15:00</span><span class="d">9 h</span></div></div><div class="c"><div class="m am"><span class="t">06:00 – 15:00</span><span class="d">9 h</span></div></div><div class="c"><div class="m am"><span class="t">06:00 – 15:00</span><span class="d">9 h</span></div></div><div class="c"><div class="m am"><span class="t">06:00 – 15:00</span><span class="d">9 h</span></div></div><div class="c today"><div class="m am"><span class="t">06:00 – 10:00</span><span class="d">4 h</span></div></div>
+
+  <div class="who"><b>Aníbal Fuentes</b><span>Funza · Supervisor</span></div>
+  <div class="c"><div class="avl">Disponible</div></div><div class="c"><div class="m am"><span class="t">08:00 – 17:00</span><span class="d">9 h</span></div></div><div class="c"><div class="m am"><span class="t">08:00 – 17:00</span><span class="d">9 h</span></div></div><div class="c"><div class="m am"><span class="t">08:00 – 17:00</span><span class="d">9 h</span></div></div><div class="c"><div class="m am"><span class="t">08:00 – 17:00</span><span class="d">9 h</span></div></div><div class="c"><div class="m am"><span class="t">08:00 – 17:00</span><span class="d">9 h</span></div></div><div class="c today"><div class="m am"><span class="t">08:00 – 12:00</span><span class="d">4 h</span></div></div>
+
+  <div class="who"><b>Dina Escobar</b><span>Fontibón-Noche · Operadora</span></div>
+  <div class="c"><div class="m nt"><span class="t">22:00 – 05:00</span><span class="d">7 h · sale lun</span></div></div><div class="c"><div class="m nt"><span class="t">22:00 – 05:00</span><span class="d">7 h · sale mar</span></div></div><div class="c"><div class="m nt sel"><span class="t">22:00 – 06:00</span><span class="d">8 h · sale mié</span></div></div><div class="c"><div class="dawn"><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"/></svg>Amanece · sale 06:00</div></div><div class="c"><div class="m am"><span class="t">07:00 – 17:00</span><span class="d">10 h</span></div></div><div class="c"><div class="m am"><span class="t">07:00 – 17:00</span><span class="d">10 h</span></div></div><div class="c today"><div class="m am"><span class="t">07:00 – 23:00</span><span class="d">16 h</span></div></div>
+
+  <div class="who"><b>Camilo Suárez</b><span>Fontibón-Noche · Operador</span></div>
+  <div class="c"><div class="m nt"><span class="t">22:00 – 05:00</span><span class="d">7 h</span></div></div><div class="c"><div class="m nt"><span class="t">22:00 – 05:00</span><span class="d">7 h</span></div></div><div class="c"><div class="m nt"><span class="t">22:00 – 06:00</span><span class="d">8 h</span></div></div><div class="c"><div class="m nt"><span class="t">22:00 – 05:00</span><span class="d">7 h</span></div></div><div class="c"><div class="m nt"><span class="t">22:00 – 06:00</span><span class="d">8 h</span></div></div><div class="c"><div class="m nt"><span class="t">22:00 – 05:00</span><span class="d">7 h</span></div></div><div class="c today"><div class="dawn"><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"/></svg>Amanece · sale 05:00</div></div>
+
+  <div class="who"><b>Angélica García</b><span>Logika · Auxiliar</span></div>
+  <div class="c"><div class="rest">Descanso</div></div><div class="c"><div class="m am"><span class="t">06:00 – 15:00</span><span class="d">9 h</span></div></div><div class="c"><div class="m am"><span class="t">06:00 – 15:00</span><span class="d">9 h</span></div></div><div class="c"><div class="m am"><span class="t">06:00 – 15:00</span><span class="d">9 h</span></div></div><div class="c"><div class="m am"><span class="t">06:00 – 15:00</span><span class="d">9 h</span></div></div><div class="c"><div class="m am"><span class="t">06:00 – 15:00</span><span class="d">9 h</span></div></div><div class="c today"><div class="m am"><span class="t">06:00 – 10:00</span><span class="d">4 h</span></div></div>
+
+  <div class="who"><b>Dallana Obando</b><span>Madrid · Coordinadora</span></div>
+  <div class="c"><div class="rest">Descanso</div></div><div class="c"><div class="m am"><span class="t">08:00 – 17:00</span><span class="d">9 h</span></div></div><div class="c"><div class="m am"><span class="t">08:00 – 17:00</span><span class="d">9 h</span></div></div><div class="c"><span class="note"><svg viewBox="0 0 24 24"><path d="M12 7v6M12 17h.01"/></svg></span><div class="m am"><span class="t">08:00 – 17:00</span><span class="d">Capacitación SST</span></div></div><div class="c"><div class="m am"><span class="t">08:00 – 17:00</span><span class="d">9 h</span></div></div><div class="c"><div class="m am"><span class="t">08:00 – 17:00</span><span class="d">9 h</span></div></div><div class="c today"><div class="m am"><span class="t">08:00 – 12:00</span><span class="d">4 h</span></div></div>
+
+  <div class="who"><b>Kenin Pinilla</b><span>Sibaté · Operador</span></div>
+  <div class="c"><div class="rest">Descanso</div></div><div class="c"><div class="m am"><span class="t">08:00 – 17:00</span><span class="d">9 h</span></div></div><div class="c"><div class="m am"><span class="t">08:00 – 17:00</span><span class="d">9 h</span></div></div><div class="c"><div class="m am"><span class="t">08:00 – 17:00</span><span class="d">9 h</span></div></div><div class="c"><div class="m am"><span class="t">08:00 – 17:00</span><span class="d">9 h</span></div></div><div class="c"><div class="m am"><span class="t">08:00 – 17:00</span><span class="d">9 h <span class="lock"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span></span></div></div><div class="c today"><div class="m am"><span class="t">08:00 – 12:00</span><span class="d">4 h</span></div></div>
+
+  <div class="who"><b>Andrés Correa</b><span>Funza · Conductor</span></div>
+  <div class="c"><div class="rest">Descanso</div></div><div class="c"><div class="m am"><span class="t">07:00 – 16:00</span><span class="d">9 h</span></div></div><div class="c"><div class="m am"><span class="t">07:00 – 16:00</span><span class="d">9 h</span></div></div><div class="c"><div class="m am"><span class="t">07:00 – 16:00</span><span class="d">9 h</span></div></div><div class="c"><div class="m am"><span class="t">07:00 – 16:00</span><span class="d">9 h</span></div></div><div class="c"><div class="m am"><span class="t">07:00 – 16:00</span><span class="d">9 h</span></div></div><div class="c today"><div class="m am"><span class="t">07:00 – 11:00</span><span class="d">4 h</span></div></div>
+
+  <div class="who"><b>María Obeso</b><span>Fontibón-OPL · Operadora logística</span></div>
+  <div class="c"><div class="rest">Descanso</div></div><div class="c"><div class="m am"><span class="t">08:00 – 17:00</span><span class="d">9 h</span></div></div><div class="c"><div class="m am"><span class="t">08:00 – 17:00</span><span class="d">9 h</span></div></div><div class="c"><div class="m am"><span class="t">08:00 – 17:00</span><span class="d">9 h</span></div></div><div class="c"><div class="m am"><span class="t">08:00 – 17:00</span><span class="d">9 h</span></div></div><div class="c"><div class="m am"><span class="t">08:00 – 17:00</span><span class="d">9 h</span></div></div><div class="c today"><div class="m am"><span class="t">08:00 – 12:00</span><span class="d">4 h</span></div></div>
+ </div>
+ <footer><span><b>9</b> personas</span><span><b>54</b> turnos asignados</span><span><b>9</b> nocturnos</span><span><b>6</b> descansos</span><span style="margin-left:auto">Hoy trabajan <b>8</b> · Camilo Suárez sale de turno noche a las 05:00</span></footer>
+</main>
+</body></html>

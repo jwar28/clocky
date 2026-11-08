@@ -1,107 +1,88 @@
 "use client";
 
 import { useEffect } from "react";
-import { APP_NAME, AREA_LABEL } from "@/lib/constants";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { AREA_LABEL } from "@/lib/constants";
 import { TaxonomyManager } from "@/components/settings/TaxonomyManager";
-import { useSitesStore } from "@/store/taxonomy-store";
-import { useRolesStore } from "@/store/taxonomy-store";
+import { useRolesStore, useSitesStore } from "@/store/taxonomy-store";
 import { useStaffStore } from "@/store/staff-store";
 
 export default function SettingsPage() {
-  const sites = useSitesStore((s) => s.items);
-  const sitesLoading = useSitesStore((s) => s.loading);
-  const sitesError = useSitesStore((s) => s.error);
-  const sitesFetched = useSitesStore((s) => s.fetched);
-  const sitesFetch = useSitesStore((s) => s.fetch);
-  const sitesCreate = useSitesStore((s) => s.create);
-  const sitesUpdate = useSitesStore((s) => s.update);
-  const sitesDelete = useSitesStore((s) => s.remove);
-  const sitesUsage = useSitesStore((s) => s.usageByName);
-
-  const roles = useRolesStore((s) => s.items);
-  const rolesLoading = useRolesStore((s) => s.loading);
-  const rolesError = useRolesStore((s) => s.error);
-  const rolesFetched = useRolesStore((s) => s.fetched);
-  const rolesFetch = useRolesStore((s) => s.fetch);
-  const rolesCreate = useRolesStore((s) => s.create);
-  const rolesUpdate = useRolesStore((s) => s.update);
-  const rolesDelete = useRolesStore((s) => s.remove);
-  const rolesUsage = useRolesStore((s) => s.usageByName);
-
+  const sites = useSitesStore();
+  const roles = useRolesStore();
+  const staff = useStaffStore((s) => s.staff);
   const staffFetched = useStaffStore((s) => s.fetched);
   const fetchStaff = useStaffStore((s) => s.fetchStaff);
 
   useEffect(() => {
     if (!staffFetched) void fetchStaff();
   }, [staffFetched, fetchStaff]);
-
   useEffect(() => {
-    if (!sitesFetched) void sitesFetch();
-  }, [sitesFetched, sitesFetch]);
-
+    if (!sites.fetched) void sites.fetch();
+  }, [sites.fetched, sites.fetch]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (!rolesFetched) void rolesFetch();
-  }, [rolesFetched, rolesFetch]);
+    if (!roles.fetched) void roles.fetch();
+  }, [roles.fetched, roles.fetch]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <div className="flex-1 px-6 py-8">
-        <h1 className="mb-4 font-display text-headline-xl text-foreground">Configuración</h1>
+    <div className="flex min-h-[calc(100dvh-3.5rem)] flex-col md:min-h-screen">
+      <header className="flex h-[60px] shrink-0 items-center border-b border-border px-4 md:px-6">
+        <h1 className="text-[21px] font-bold tracking-tight text-foreground">Configuración</h1>
+      </header>
 
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Acerca de</CardTitle>
-              <CardDescription>Información de la aplicación.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2 text-body-sm text-muted-foreground">
-              <p>
-                <span className="font-semibold text-foreground">Aplicación:</span> {APP_NAME}
-              </p>
-              <p>
-                <span className="font-semibold text-foreground">Área:</span> {AREA_LABEL}
-              </p>
-              <p>
-                <span className="font-semibold text-foreground">Backend:</span> InsForge
-              </p>
-              <p>
-                <span className="font-semibold text-foreground">Semana tipo:</span> Domingo → Sábado
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <h2 className="mt-8 mb-3 font-display text-headline-md text-foreground">Sedes y Roles</h2>
-        <div className="grid gap-4 lg:grid-cols-2">
+      <div className="flex-1 px-4 py-6 md:px-6 md:py-8">
+        <div className="mx-auto max-w-2xl space-y-10">
           <TaxonomyManager
+            id="sedes"
             title="Sedes"
-            description="Lista de sedes disponibles para asignar al personal."
+            description="Dónde trabaja el equipo. Cada persona tiene una sede habitual y puede rotar a otra al asignar turnos."
             kind="site"
-            items={sites}
-            loading={sitesLoading}
-            error={sitesError}
-            usageByName={sitesUsage}
-            onCreate={sitesCreate}
-            onUpdate={sitesUpdate}
-            onDelete={sitesDelete}
-            onRefresh={sitesFetch}
-            inputPlaceholder="Ej. Fontibón"
+            items={sites.items}
+            loading={sites.loading}
+            error={sites.error}
+            staff={staff}
+            onCreate={sites.create}
+            onUpdate={sites.update}
+            onDelete={sites.remove}
+            onRetry={sites.fetch}
+            placeholder="Nueva sede"
           />
+
           <TaxonomyManager
+            id="roles"
             title="Roles"
-            description="Lista de roles o cargos disponibles para el personal."
+            description="Cargos del personal. Se eligen en la ficha de cada persona."
             kind="role"
-            items={roles}
-            loading={rolesLoading}
-            error={rolesError}
-            usageByName={rolesUsage}
-            onCreate={rolesCreate}
-            onUpdate={rolesUpdate}
-            onDelete={rolesDelete}
-            onRefresh={rolesFetch}
-            inputPlaceholder="Ej. Operador"
+            items={roles.items}
+            loading={roles.loading}
+            error={roles.error}
+            staff={staff}
+            onCreate={roles.create}
+            onUpdate={roles.update}
+            onDelete={roles.remove}
+            onRetry={roles.fetch}
+            placeholder="Nuevo rol"
           />
+
+          <section aria-labelledby="about-title">
+            <h2 id="about-title" className="mb-3 text-lg font-extrabold tracking-tight">
+              Acerca de
+            </h2>
+            <dl className="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2 rounded-xl border border-border px-4 py-3 text-sm">
+              <dt className="text-muted-foreground">Área</dt>
+              <dd className="font-semibold">{AREA_LABEL}</dd>
+              <dt className="text-muted-foreground">Semana</dt>
+              <dd className="font-semibold">Domingo a sábado</dd>
+              <dt className="text-muted-foreground">Horario de referencia</dt>
+              <dd className="font-semibold">Colombia (Bogotá)</dd>
+              <dt className="text-muted-foreground">Vista pública</dt>
+              <dd className="font-semibold">
+                <a href="/equipo" target="_blank" rel="noreferrer" className="text-primary underline underline-offset-4 hover:no-underline">
+                  /equipo
+                </a>
+                <span className="ml-2 font-normal text-muted-foreground">para que el equipo consulte sus turnos</span>
+              </dd>
+            </dl>
+          </section>
         </div>
       </div>
     </div>

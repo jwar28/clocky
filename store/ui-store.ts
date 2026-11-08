@@ -8,6 +8,13 @@ interface UiState {
   setSiteFilter: (s: string) => void;
   weekStart: string;
   setWeekStart: (s: string) => void;
+  /** Free-text person search; filters timeline rows by name. */
+  staffQuery: string;
+  setStaffQuery: (q: string) => void;
+  /** Set when something outside the schedule page (e.g. the sidebar CTA) asks to open the assign sheet. */
+  pendingAssign: boolean;
+  requestAssign: () => void;
+  clearAssign: () => void;
 }
 
 // Default weekStart is computed once at module load using Colombia's current date.
@@ -18,4 +25,9 @@ export const useUiStore = create<UiState>((set) => ({
   setSiteFilter: (s) => set({ siteFilter: s }),
   weekStart: DEFAULT_WEEK_START,
   setWeekStart: (s) => set({ weekStart: s }),
+  staffQuery: "",
+  setStaffQuery: (q) => set({ staffQuery: q }),
+  pendingAssign: false,
+  requestAssign: () => set({ pendingAssign: true }),
+  clearAssign: () => set({ pendingAssign: false }),
 }));

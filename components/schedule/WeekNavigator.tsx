@@ -1,9 +1,9 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Crosshair } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils/cn";
-import { formatWeekLabel, getWeekStart, prevWeek, nextWeek, todayInBogota } from "@/lib/utils/date";
+import { formatRangeLabel, getWeekStart, nextWeek, prevWeek, todayInBogota } from "@/lib/utils/date";
 
 interface WeekNavigatorProps {
   weekStart: string;
@@ -11,42 +11,32 @@ interface WeekNavigatorProps {
   className?: string;
 }
 
+/** Calendar-style week navigation: [Hoy] ‹ › "1 – 7 nov 2026". */
 export function WeekNavigator({ weekStart, onChange, className }: WeekNavigatorProps) {
   const currentWeek = getWeekStart(todayInBogota());
   const isOnCurrentWeek = weekStart === currentWeek;
 
   return (
-    <div className={cn("flex items-center gap-2", className)}>
+    <div className={cn("flex min-w-0 items-center gap-1", className)}>
       <Button
         variant="outline"
-        size="icon"
-        aria-label="Semana anterior"
-        onClick={() => onChange(prevWeek(weekStart))}
+        size="sm"
+        className="mr-2 h-9 px-4 font-bold"
+        onClick={() => onChange(currentWeek)}
+        aria-label="Ir a la semana actual"
+        aria-current={isOnCurrentWeek ? "date" : undefined}
       >
-        <ChevronLeft className="h-4 w-4" />
+        Hoy
       </Button>
-      <div className="min-w-[200px] text-center font-display text-headline-md text-foreground">
-        {formatWeekLabel(weekStart)}
-      </div>
-      <Button
-        variant="outline"
-        size="icon"
-        aria-label="Semana siguiente"
-        onClick={() => onChange(nextWeek(weekStart))}
-      >
-        <ChevronRight className="h-4 w-4" />
+      <Button variant="ghost" size="icon" aria-label="Semana anterior" onClick={() => onChange(prevWeek(weekStart))}>
+        <ChevronLeft />
       </Button>
-      {!isOnCurrentWeek && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onChange(currentWeek)}
-          className="ml-2 border-primary/40 text-primary hover:bg-primary-container/30 hover:text-primary"
-        >
-          <Crosshair className="mr-1.5 h-3.5 w-3.5" />
-          Ir a semana actual
-        </Button>
-      )}
+      <Button variant="ghost" size="icon" aria-label="Semana siguiente" onClick={() => onChange(nextWeek(weekStart))}>
+        <ChevronRight />
+      </Button>
+      <h1 className="ml-1.5 whitespace-nowrap text-lg lg:ml-2 lg:text-[21px] font-bold tracking-tight text-foreground" aria-live="polite">
+        {formatRangeLabel(weekStart)}
+      </h1>
     </div>
   );
 }

@@ -1,27 +1,64 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useStaffStore } from "@/store/staff-store";
 import { useScheduleStore } from "@/store/schedule-store";
 import { useUiStore } from "@/store/ui-store";
-import { ScheduleGridHeader } from "./ScheduleGridHeader";
-import { ScheduleGridRow } from "./ScheduleGridRow";
+import { getWeekStart, nowMinutesInBogota, todayInBogota } from "@/lib/utils/date";
+import { cn } from "@/lib/utils/cn";
+import { worksAtSite } from "@/lib/utils/site";
+import type { DayIndex } from "@/lib/types";
 import { ScheduleGridSkeleton } from "./ScheduleGridSkeleton";
 import { EmptyWeekBanner } from "./EmptyWeekBanner";
-import { Skeleton } from "@/components/ui/skeleton";
+import { TimelineHeader } from "./timeline/TimelineHeader";
+import { TimelineLane } from "./timeline/TimelineLane";
+import { weekFrac } from "./timeline/geometry";
 
 interface ScheduleGridProps {
-  /** Optional. When omitted, cells are rendered read-only (no hover, no click). */
+  /** Optional. When omitted, the timeline is read-only (no click to edit). */
   onCellClick?: (staffId: string, dayIndex: number) => void;
-  /** Optional. When omitted, the lock badge is read-only (not clickable). */
+  /** Optional. When omitted, lock badges are read-only. */
   onCellLockToggle?: (staffId: string, dayIndex: number) => void;
-  /** Optional. When omitted, the empty-week banner renders in read-only mode (no CTA). */
+  /** Optional. When omitted, the empty-week banner renders without a CTA. */
   onAssignWeek?: () => void;
+  className?: string;
 }
 
-export function ScheduleGrid({ onCellClick, onCellLockToggle, onAssignWeek }: ScheduleGridProps) {
+export function normalizeName(s: string) {
+  return s.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
+}
+
+/** Live position of "now" within the visible week, or null when the week isn't the current one. */
+function useNowFrac(weekStart: string): number | null {
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => setTick((t) => t + 1), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+  return useMemo(() => {
+    void tick;
+    const today = todayInBogota();
+    if (getWeekStart(today) !== weekStart) return null;
+    const dow = new Date(`${today}T12:00:00`).getDay();
+    return weekFrac(dow, nowMinutesInBogota());
+  }, [weekStart, tick]);
+}
+
+function formatNow() {
+  const m = nowMinutesInBogota();
+  return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+}
+
+/**
+ * Week timeline ("gráfico de marcha"): one continuous 168-hour lane per person.
+ * Shifts are bars on that lane, so night shifts cross midnight as one bar.
+ */
+export function ScheduleGrid({ onCellClick, onCellLockToggle, onAssignWeek, className }: ScheduleGridProps) {
   const weekStart = useUiStore((s) => s.weekStart);
   const siteFilter = useUiStore((s) => s.siteFilter);
+  const staffQuery = useUiStore((s) => s.staffQuery);
+  const setStaffQuery = useUiStore((s) => s.setStaffQuery);
+  const setSiteFilter = useUiStore((s) => s.setSiteFilter);
 
   const { staff, loading: staffLoading, fetched: staffFetched, fetchStaff } = useStaffStore();
   const { byWeek, loading: schedLoading, fetchedWeeks, fetchWeek } = useScheduleStore();
@@ -34,111 +71,103 @@ export function ScheduleGrid({ onCellClick, onCellLockToggle, onAssignWeek }: Sc
     if (!fetchedWeeks[weekStart]) void fetchWeek(weekStart);
   }, [weekStart, fetchedWeeks, fetchWeek]);
 
-  const filteredStaff = useMemo(
-    () => (siteFilter ? staff.filter((s) => s.defaultSite === siteFilter) : staff),
-    [staff, siteFilter],
-  );
+  const weekRowsForFilter = byWeek[weekStart];
+  const rows = useMemo(() => {
+    const q = normalizeName(staffQuery.trim());
+    return staff.filter(
+      (s) =>
+        worksAtSite(s, weekRowsForFilter?.find((r) => r.staffId === s.id)?.days, siteFilter) &&
+        (!q || normalizeName(s.fullName).includes(q)),
+    );
+  }, [staff, siteFilter, staffQuery, weekRowsForFilter]);
 
+  const nowFrac = useNowFrac(weekStart);
   const weekRows = byWeek[weekStart] ?? [];
 
-  const isStaffLoading = staffLoading && !staffFetched;
-  const isWeekLoading = schedLoading && !fetchedWeeks[weekStart];
-
-  if (isStaffLoading || isWeekLoading) {
-    return <ScheduleGridSkeleton />;
+  if ((staffLoading && !staffFetched) || (schedLoading && !fetchedWeeks[weekStart])) {
+    return <ScheduleGridSkeleton className={className} />;
   }
 
   if (staffFetched && staff.length === 0) {
     return (
-      <div className="rounded-lg border border-grid bg-card p-8 text-center">
-        <p className="font-display text-headline-md">Sin personal registrado</p>
-        <p className="mt-1 text-body-sm text-muted-foreground">
-          Agrega tu primer empleado con el botón &ldquo;Nuevo empleado&rdquo;.
-        </p>
+      <div className="grid h-full place-items-center p-8 text-center">
+        <div>
+          <p className="text-lg font-bold">Sin personal registrado</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Agrega tu primer empleado desde &ldquo;Nuevo empleado&rdquo; para empezar la malla.
+          </p>
+        </div>
       </div>
     );
   }
 
-  // If a site filter is active and yields zero results, show a small empty state
-  // inside the table instead of an entirely blank grid.
-  if (siteFilter && filteredStaff.length === 0) {
-    return (
-      <div className="overflow-x-auto rounded-lg border border-grid bg-card">
-        <table className="w-full min-w-[1100px] border-collapse text-body-sm">
-          <ScheduleGridHeader weekStart={weekStart} />
-          <tbody>
-            <tr>
-              <td
-                colSpan={9}
-                className="cell-pad border border-grid bg-card text-center text-body-sm text-muted-foreground"
-              >
-                Ningún empleado coincide con el filtro &ldquo;{siteFilter}&rdquo;.
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    );
-  }
-
-  // Filler rows only when no filter and total staff < 9.
-  const showFillers = !siteFilter && staff.length < 9;
-  const fillerCount = showFillers ? Math.max(0, 9 - filteredStaff.length) : 0;
-
-  // Banner above the grid when the week has no schedules (still renders the grid below).
   const showEmptyBanner = fetchedWeeks[weekStart] && weekRows.length === 0;
 
   return (
-    <div>
-      {showEmptyBanner && <EmptyWeekBanner onAssign={onAssignWeek} />}
-      <div className="overflow-x-auto rounded-lg border border-grid bg-card">
-        <table className="w-full min-w-[1100px] border-collapse text-body-sm">
-          <ScheduleGridHeader weekStart={weekStart} />
-          <tbody className="row-zebra">
-            {filteredStaff.map((s, idx) => {
-              const entry = weekRows.find((r) => r.staffId === s.id);
-              return (
-                <ScheduleGridRow
-                  key={s.id}
-                  staff={s}
-                  weekStart={weekStart}
-                  days={entry?.days}
-                  zebra={idx % 2 === 1}
-                  onCellClick={
-                    onCellClick
-                      ? (dayIndex) => onCellClick(s.id, dayIndex)
-                      : undefined
-                  }
-                  onCellLockToggle={
-                    onCellLockToggle
-                      ? (dayIndex) => onCellLockToggle(s.id, dayIndex)
-                      : undefined
-                  }
-                />
-              );
-            })}
-            {Array.from({ length: fillerCount }).map((_, i) => (
-              <tr key={`filler-${i}`} className={cnFiller(i + filteredStaff.length)}>
-                <th className="cell-pad border border-grid text-left">
-                  <Skeleton className="h-3 w-32" />
-                </th>
-                <td className="cell-pad border border-grid text-left">
-                  <Skeleton className="h-3 w-24" />
-                </td>
-                {Array.from({ length: 7 }).map((__, day) => (
-                  <td key={day} className="cell-pad border border-grid text-center">
-                    <Skeleton className="mx-auto h-3 w-20" />
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <div className={cn("flex min-h-0 flex-col", className)}>
+      {showEmptyBanner && (
+        <div className="px-5 py-3">
+          <EmptyWeekBanner onAssign={onAssignWeek} />
+        </div>
+      )}
+      <div
+        className="relative min-h-0 flex-1 overflow-auto"
+        style={{ "--name-col": "200px" } as React.CSSProperties}
+      >
+        <div className="relative min-w-[1120px]">
+          <TimelineHeader
+            weekStart={weekStart}
+            count={rows.length}
+            now={nowFrac !== null && rows.length > 0 ? { frac: nowFrac, label: formatNow() } : null}
+          />
+
+          <div className="relative">
+            {rows.length === 0 ? (
+              <div className="px-5 py-10">
+                <p className="text-sm font-bold text-foreground">
+                  Nadie coincide con
+                  {staffQuery.trim() ? <> &ldquo;{staffQuery.trim()}&rdquo;</> : null}
+                  {siteFilter ? <> en la sede {siteFilter}</> : null}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStaffQuery("");
+                    setSiteFilter("");
+                  }}
+                  className="mt-3 h-9 rounded-lg border border-input px-3 text-sm font-bold transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  Ver a todo el equipo
+                </button>
+              </div>
+            ) : (
+              rows.map((s) => {
+                const entry = weekRows.find((r) => r.staffId === s.id);
+                return (
+                  <TimelineLane
+                    key={s.id}
+                    staff={s}
+                    weekStart={weekStart}
+                    days={entry?.days}
+                    onDayClick={onCellClick ? (d: DayIndex) => onCellClick(s.id, d) : undefined}
+                    onLockToggle={onCellLockToggle ? (d: DayIndex) => onCellLockToggle(s.id, d) : undefined}
+                  />
+                );
+              })
+            )}
+
+            {nowFrac !== null && rows.length > 0 && (
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-y-0 z-[4] w-0.5 bg-primary"
+                style={{ left: `calc(var(--name-col) + (100% - var(--name-col)) * ${nowFrac.toFixed(5)})` }}
+              >
+                <span className="absolute -left-[3px] -top-[4px] h-2 w-2 rounded-full bg-primary ring-2 ring-background" />
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
-}
-
-function cnFiller(idx: number): string {
-  return idx % 2 === 1 ? "bg-secondary-container" : "";
 }

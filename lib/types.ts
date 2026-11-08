@@ -13,6 +13,12 @@ export interface DayShift {
   note?: string;
   /** Lock the day from bulk-edit overrides. Managed via the lock UI only. */
   locked?: boolean;
+  /**
+   * Sede for this day when it differs from the person's habitual sede
+   * (staff.defaultSite). Staff rotate between sedes week to week or even
+   * mid-week, so this lives on the day, never on the staff record.
+   */
+  site?: string;
 }
 
 /** Indexes (Sunday-first): 0=Dom, 1=Lun, 2=Mar, 3=Mié, 4=Jue, 5=Vie, 6=Sáb */

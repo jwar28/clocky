@@ -140,7 +140,7 @@ export function StaffDialog({ open, onOpenChange, staff }: StaffDialogProps) {
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label htmlFor="defaultSite">Sede</Label>
+              <Label htmlFor="defaultSite">Sede habitual</Label>
               <SiteRoleCombobox
                 id="defaultSite"
                 kind="site"
@@ -151,6 +151,9 @@ export function StaffDialog({ open, onOpenChange, staff }: StaffDialogProps) {
                 onCreate={sitesCreate}
                 placeholder="Selecciona una sede"
               />
+              <p className="text-xs leading-snug text-muted-foreground">
+                Si rota de sede, cámbialo al asignar turnos, no aquí.
+              </p>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="role">Rol</Label>

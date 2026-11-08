@@ -1,30 +1,23 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Save, Trash2, StickyNote } from "lucide-react";
+import { ArrowLeftRight, ArrowRight, Loader2, Moon, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils/cn";
 import { WEEK_DAY_LABELS } from "@/lib/constants";
 import { useStaffStore } from "@/store/staff-store";
 import { useScheduleStore } from "@/store/schedule-store";
+import { useSitesStore } from "@/store/taxonomy-store";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { DayIndex, DayShift } from "@/lib/types";
-import { formatWeekLabel } from "@/lib/utils/date";
+import { dayHeaderNumber, formatRangeLabel } from "@/lib/utils/date";
+import { formatDayRange } from "@/lib/utils/schedule-merge";
 import { StaffMultiSelect } from "./StaffMultiSelect";
 import { DayPicker } from "./DayPicker";
-import { AssignmentPreview } from "./AssignmentPreview";
+import { ShiftTrack } from "./ShiftTrack";
 
 interface ScheduleEditSheetProps {
   open: boolean;
@@ -32,39 +25,75 @@ interface ScheduleEditSheetProps {
   weekStart: string;
   /** Initial staff id (e.g., from a cell click). */
   initialStaffId?: string | null;
-  /** Initial day index (e.g., the cell that was clicked). */
+  /** Initial day index (e.g., the day that was clicked). */
   initialDayIndex?: DayIndex | null;
   /** Optional: site filter for the staff selector. */
   siteFilter?: string;
 }
 
-const SHIFT_OPTIONS: Array<{
-  id: DayShift["type"];
-  label: string;
-  description: string;
-  pillClass: string;
-}> = [
-  { id: "rest", label: "Descanso", description: "Día libre.", pillClass: "bg-tertiary-fixed/50 text-tertiary border-tertiary-container/40" },
-  { id: "available", label: "Disponible", description: "Disponible para asignar.", pillClass: "bg-tertiary-fixed/40 text-tertiary border-tertiary-container/50" },
-  { id: "nightIn", label: "Amanece turno noche", description: "Termina turno noche de la noche anterior.", pillClass: "bg-tertiary-fixed/60 text-tertiary border-tertiary-container/60 italic" },
-  { id: "time", label: "Hora", description: "Asignar rango de horas.", pillClass: "bg-secondary-container text-primary" },
-];
+type ShiftType = DayShift["type"];
 
 const DEFAULT_TIME = { start: "08:00", end: "17:00" } as const;
+const FALLBACK_PRESETS = ["06:00-15:00", "07:00-16:00", "08:00-17:00", "22:00-05:00"];
+const NOTE_MAX = 500;
 
-function shiftFromType(type: DayShift["type"]): DayShift {
-  if (type === "time") return { type: "time", ...DEFAULT_TIME };
-  return { type };
+function shiftFromType(type: ShiftType): DayShift {
+  return type === "time" ? { type: "time", ...DEFAULT_TIME } : { type };
 }
 
-function SectionHeader({ step, label }: { step: 1 | 2 | 3 | 4; label: string }) {
+/** Shift-type options, each drawn with its swatch from the timeline's legend. */
+const TYPE_OPTIONS: Array<{ id: ShiftType; label: string; hint: string; swatch: React.ReactNode }> = [
+  {
+    id: "time",
+    label: "Horario",
+    hint: "Hora de inicio y fin",
+    swatch: <i className="h-2.5 w-6 rounded-sm bg-shift-day shadow-[inset_0_-3px_0_hsl(var(--shift-day-rule))]" />,
+  },
+  {
+    id: "rest",
+    label: "Descanso",
+    hint: "Día libre",
+    swatch: <i className="h-2.5 w-6 rounded-sm border border-dashed border-muted-foreground/50" />,
+  },
+  {
+    id: "available",
+    label: "Disponible",
+    hint: "Se puede llamar",
+    swatch: <i className="h-2.5 w-6 rounded-sm border-2 border-dashed border-available bg-available-bg" />,
+  },
+  {
+    id: "nightIn",
+    label: "Amanece",
+    hint: "Sale del turno noche",
+    swatch: <Moon className="h-3.5 w-3.5 text-shift-night" aria-hidden />,
+  },
+];
+
+function Section({
+  label,
+  aside,
+  children,
+  htmlFor,
+}: {
+  label: string;
+  aside?: React.ReactNode;
+  children: React.ReactNode;
+  htmlFor?: string;
+}) {
   return (
-    <h3 className="flex items-center gap-2 font-display text-table-header uppercase tracking-wide text-primary">
-      <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[11px] leading-none text-primary-foreground">
-        {step}
-      </span>
-      {label}
-    </h3>
+    <section className="space-y-2.5">
+      <div className="flex items-baseline justify-between gap-3">
+        {htmlFor ? (
+          <label htmlFor={htmlFor} className="text-sm font-bold text-foreground">
+            {label}
+          </label>
+        ) : (
+          <h3 className="text-sm font-bold text-foreground">{label}</h3>
+        )}
+        {aside && <div className="text-[13px] text-muted-foreground">{aside}</div>}
+      </div>
+      {children}
+    </section>
   );
 }
 
@@ -81,48 +110,46 @@ export function ScheduleEditSheet({
   const removeSchedule = useScheduleStore((s) => s.removeSchedule);
   const byWeek = useScheduleStore((s) => s.byWeek);
 
-  // ---- Step 1: Staff ----
   const [staffIds, setStaffIds] = useState<string[]>([]);
-  // ---- Step 2: Days ----
   const [selectedDays, setSelectedDays] = useState<DayIndex[]>([]);
-  // ---- Step 3: Shift ----
   const [shift, setShift] = useState<DayShift>(shiftFromType("time"));
-  // ---- Step 4: Note ----
-  const [note, setNote] = useState<string>("");
+  const [note, setNote] = useState("");
+  /** Sede override for the chosen days; "" = each person's habitual sede. */
+  const [site, setSite] = useState("");
+  const sites = useSitesStore((s) => s.items);
+  const sitesFetched = useSitesStore((s) => s.fetched);
+  const fetchSites = useSitesStore((s) => s.fetch);
+  useEffect(() => {
+    if (open && !sitesFetched) void fetchSites();
+  }, [open, sitesFetched, fetchSites]);
   const [saving, setSaving] = useState(false);
+  /** Opened from one person's day on the timeline → edit mode. */
+  const [editMode, setEditMode] = useState(false);
 
-  // Initial state when sheet opens
   useEffect(() => {
     if (!open) return;
-    // staff: use initialStaffId when provided, otherwise start empty (no auto-selection)
-    const nextStaffIds: string[] =
-      initialStaffId && staff.some((s) => s.id === initialStaffId)
-        ? [initialStaffId]
-        : [];
+    const nextStaffIds =
+      initialStaffId && staff.some((s) => s.id === initialStaffId) ? [initialStaffId] : [];
+    const days: DayIndex[] = initialDayIndex !== null && initialDayIndex !== undefined ? [initialDayIndex] : [];
     setStaffIds(nextStaffIds);
-
-    // days
-    const days: DayIndex[] =
-      initialDayIndex !== null && initialDayIndex !== undefined ? [initialDayIndex] : [];
     setSelectedDays(days);
+    setEditMode(nextStaffIds.length === 1 && days.length === 1);
 
-    // shift + note: pre-fill from existing schedule of (staff, day) when both are provided
-    if (nextStaffIds[0] && days[0] !== undefined) {
-      const existing = byWeek[weekStart]
-        ?.find((e) => e.staffId === nextStaffIds[0])
-        ?.days[days[0]];
-      if (existing) {
-        setShift({ ...existing });
-        setNote(existing.note ?? "");
-      } else {
-        setShift(shiftFromType("time"));
-        setNote("");
-      }
+    const existing =
+      nextStaffIds[0] && days[0] !== undefined
+        ? byWeek[weekStart]?.find((e) => e.staffId === nextStaffIds[0])?.days[days[0]]
+        : undefined;
+    if (existing) {
+      const { note: n, locked: _l, site: st, ...rest } = existing;
+      setShift(rest.type === "time" ? { ...DEFAULT_TIME, ...rest } : rest);
+      setNote(n ?? "");
+      setSite(st ?? "");
     } else {
       setShift(shiftFromType("time"));
       setNote("");
+      setSite("");
     }
-    // We intentionally read byWeek as the source of truth, so don't include it in deps
+    // byWeek is read as a snapshot when the sheet opens.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initialStaffId, initialDayIndex, weekStart]);
 
@@ -131,268 +158,298 @@ export function ScheduleEditSheet({
     [staffIds, staff],
   );
 
-  // Compute locked days for the (currently selected single staff, week) — used
-  // to mark which days the bulk update will skip when the user saves.
-  const lockedDaysForActiveStaff = useMemo<DayIndex[]>(() => {
-    if (!staffIds[0]) return [];
+  // Locked days of the single selected person — shown and skipped.
+  const lockedDays = useMemo<DayIndex[]>(() => {
+    if (staffIds.length !== 1) return [];
     const days = byWeek[weekStart]?.find((e) => e.staffId === staffIds[0])?.days;
     if (!days) return [];
-    return ([0, 1, 2, 3, 4, 5, 6] as const).filter((idx) => days[idx]?.locked === true);
+    return ([0, 1, 2, 3, 4, 5, 6] as const).filter((i) => days[i]?.locked === true);
   }, [byWeek, staffIds, weekStart]);
 
-  // Effective save-days = selected minus locked.
   const effectiveDays = useMemo(
-    () => selectedDays.filter((d) => !lockedDaysForActiveStaff.includes(d)),
-    [selectedDays, lockedDaysForActiveStaff],
-  );
-  const skippedLockedDays = useMemo(
-    () => selectedDays.filter((d) => lockedDaysForActiveStaff.includes(d)),
-    [selectedDays, lockedDaysForActiveStaff],
+    () => selectedDays.filter((d) => !lockedDays.includes(d)),
+    [selectedDays, lockedDays],
   );
 
-  const canSave = staffIds.length > 0 && effectiveDays.length > 0;
-
-  function applyShiftType(type: DayShift["type"]) {
-    setShift((prev) => {
-      const trimmed = note.trim();
-      if (type === "time") {
-        return { type: "time", ...DEFAULT_TIME, ...(trimmed ? { note: trimmed } : {}) };
+  // Most frequent ranges this week, so common shifts are one tap away.
+  const presets = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const row of byWeek[weekStart] ?? []) {
+      for (const d of Object.values(row.days)) {
+        if (d?.type === "time" && d.start && d.end) {
+          const k = `${d.start}-${d.end}`;
+          counts.set(k, (counts.get(k) ?? 0) + 1);
+        }
       }
-      return { type, ...(trimmed ? { note: trimmed } : {}) };
-    });
-  }
+    }
+    const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([k]) => k);
+    return (top.length >= 3 ? top : [...top, ...FALLBACK_PRESETS.filter((p) => !top.includes(p))])
+      .slice(0, 5)
+      .sort();
+  }, [byWeek, weekStart]);
 
-  function applyNote(next: string) {
-    const trimmed = next;
-    setNote(trimmed);
-    setShift((prev) => {
-      const value = trimmed.trim();
-      const { note: _ignored, ...rest } = prev;
-      if (!value) return rest;
-      return { ...rest, note: value };
-    });
-  }
+  const timeInvalid = shift.type === "time" && (!shift.start || !shift.end || shift.start === shift.end);
+  const slots = staffIds.length * effectiveDays.length;
+  const canSave = staffIds.length > 0 && effectiveDays.length > 0 && !timeInvalid && note.length <= NOTE_MAX;
+  const hasWeek = staffIds.length === 1 && byWeek[weekStart]?.some((e) => e.staffId === staffIds[0]);
+
+  const person = selectedStaff.length === 1 ? selectedStaff[0] : undefined;
+  const singleDay = selectedDays.length === 1 ? WEEK_DAY_LABELS[selectedDays[0]!] : undefined;
 
   async function onSave() {
     if (!canSave) return;
     setSaving(true);
     try {
-      const trimmedNote = note.trim();
-      const shiftWithNote: DayShift = trimmedNote
-        ? { ...shift, note: trimmedNote }
-        : (() => {
-            const { note: _n, ...rest } = shift;
-            return rest;
-          })();
+      const trimmed = note.trim();
+      const typed: DayShift = shift.type === "time" ? { type: "time", start: shift.start, end: shift.end } : { type: shift.type };
+      // Sede override only matters on working days; rest days carry none.
+      const base: DayShift = site && shift.type !== "rest" ? { ...typed, site } : typed;
+      const newShift: DayShift = trimmed ? { ...base, note: trimmed } : base;
       const written = await bulkUpsert(
         staffIds.map((sid) => ({
           staffId: sid,
           weekStart,
-          // For bulk ops we pass the full `selectedDays` — `mergeDays` preserves
-          // `locked` so locked days are skipped naturally. But if the active
-          // staff (when single-staff select) has locked days selected, we strip
-          // them out so the merge knows they shouldn't be touched.
+          // mergeDays preserves `locked`, so locked days are skipped for multi-person saves too.
           selectedDays: staffIds.length === 1 ? effectiveDays : selectedDays,
-          newShift: shiftWithNote,
+          newShift,
         })),
       );
-      const slots = staffIds.length * effectiveDays.length;
-      const skipMsg =
-        skippedLockedDays.length > 0
-          ? ` · ${skippedLockedDays.length} ${skippedLockedDays.length === 1 ? "día bloqueado omitido" : "días bloqueados omitidos"}`
-          : "";
+      const skipped = selectedDays.length - effectiveDays.length;
       toast.success(
-        `Horarios guardados: ${written} ${written === 1 ? "empleado" : "empleados"} · ${slots} ${slots === 1 ? "día" : "días"}${skipMsg}`,
+        editMode
+          ? "Turno guardado"
+          : `${slots} ${slots === 1 ? "turno asignado" : "turnos asignados"} a ${written} ${written === 1 ? "persona" : "personas"}${skipped > 0 ? `; ${skipped} ${skipped === 1 ? "día bloqueado omitido" : "días bloqueados omitidos"}` : ""}`,
       );
       onOpenChange(false);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Error al guardar");
+      toast.error(e instanceof Error ? e.message : "No se pudo guardar. Intenta de nuevo.");
     } finally {
       setSaving(false);
     }
   }
 
-  async function onClear() {
-    const firstId = staffIds[0];
-    if (!firstId) return;
-    if (!window.confirm("¿Eliminar el horario completo de esta semana?")) return;
+  async function onClearWeek() {
+    const id = staffIds[0];
+    if (!id || !person) return;
+    if (!window.confirm(`¿Borrar toda la semana de ${person.fullName}? Sus 7 días quedarán vacíos.`)) return;
     setSaving(true);
     try {
-      await removeSchedule(firstId, weekStart);
-      toast.success("Horario eliminado");
+      await removeSchedule(id, weekStart);
+      toast.success(`Semana de ${person.fullName} borrada`);
       onOpenChange(false);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Error al eliminar");
+      toast.error(e instanceof Error ? e.message : "No se pudo borrar. Intenta de nuevo.");
     } finally {
       setSaving(false);
     }
   }
 
-  const noteLength = note.length;
-  const noteTooLong = noteLength > 500;
+  const title = editMode ? "Editar turno" : "Asignar turnos";
+  const subtitle =
+    editMode && person && singleDay
+      ? `${person.fullName}, ${singleDay.long.toLowerCase()} ${dayHeaderNumber(weekStart, singleDay.index)}`
+      : `Semana del ${formatRangeLabel(weekStart)}`;
+
+  const summary = (() => {
+    if (staffIds.length === 0) return "Elige al menos una persona.";
+    if (selectedDays.length === 0) return "Elige al menos un día.";
+    if (effectiveDays.length === 0) return "Todos los días elegidos están bloqueados.";
+    if (timeInvalid) return "La hora de inicio y fin no pueden ser iguales.";
+    if (editMode) return null;
+    return (
+      <>
+        <b className="font-bold text-foreground">{slots}</b> {slots === 1 ? "turno" : "turnos"}:{" "}
+        {staffIds.length} {staffIds.length === 1 ? "persona" : "personas"}, {formatDayRange(effectiveDays)}
+        {site && shift.type !== "rest" ? <>, en {site}</> : null}
+      </>
+    );
+  })();
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full gap-0 p-0 sm:max-w-lg">
-        <SheetHeader className="border-b border-outline-variant">
-          <SheetTitle>Asignar turnos</SheetTitle>
-          <SheetDescription>
-            {formatWeekLabel(weekStart)}
-            {selectedStaff[0] && selectedStaff.length === 1 ? (
-              <>
-                {" · "}
-                <span className="font-medium text-foreground">{selectedStaff[0].fullName}</span>
-              </>
-            ) : null}
-          </SheetDescription>
-        </SheetHeader>
+      <SheetContent
+        className="flex w-full flex-col gap-0 p-0 sm:max-w-[480px]"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
+        <header className="border-b border-border px-6 pb-4 pr-14 pt-5">
+          <SheetTitle className="text-xl font-extrabold tracking-tight">{title}</SheetTitle>
+          <SheetDescription className="mt-0.5 text-sm text-muted-foreground">{subtitle}</SheetDescription>
+        </header>
 
-        <div className="flex-1 space-y-6 overflow-y-auto p-5">
-          {/* Step 1 — ¿A QUIÉN? */}
-          <section className="space-y-2.5">
-            <SectionHeader step={1} label="¿A quién?" />
-            <StaffMultiSelect
-              selectedIds={staffIds}
-              onChange={setStaffIds}
-              siteFilter={siteFilter}
-            />
-          </section>
+        <div className="flex-1 space-y-7 overflow-y-auto px-6 py-6">
+          {!editMode && (
+            <Section
+              label="Personas"
+              aside={staffIds.length > 0 ? `${staffIds.length} ${staffIds.length === 1 ? "seleccionada" : "seleccionadas"}` : undefined}
+            >
+              <StaffMultiSelect selectedIds={staffIds} onChange={setStaffIds} siteFilter={siteFilter} />
+            </Section>
+          )}
 
-          {/* Step 2 — ¿QUÉ DÍAS? */}
-          <section className="space-y-2.5">
-            <SectionHeader step={2} label="¿Qué días?" />
-            <DayPicker
-              value={selectedDays}
-              onChange={setSelectedDays}
-              lockedDays={lockedDaysForActiveStaff}
-            />
-          </section>
+          <Section
+            label="Días"
+            aside={lockedDays.length > 0 ? `${lockedDays.length} ${lockedDays.length === 1 ? "bloqueado" : "bloqueados"}` : undefined}
+          >
+            <DayPicker value={selectedDays} onChange={setSelectedDays} weekStart={weekStart} lockedDays={lockedDays} />
+          </Section>
 
-          {/* Step 3 — ¿QUÉ TURNO? */}
-          <section className="space-y-2">
-            <SectionHeader step={3} label="¿Qué turno?" />
-            <div className="flex flex-wrap gap-1.5">
-              {SHIFT_OPTIONS.map((opt) => {
+          <Section label="Turno">
+            <div className="grid grid-cols-4 gap-1.5" role="radiogroup" aria-label="Tipo de turno">
+              {TYPE_OPTIONS.map((opt) => {
                 const active = shift.type === opt.id;
                 return (
                   <button
                     key={opt.id}
                     type="button"
-                    onClick={() => applyShiftType(opt.id)}
-                    aria-pressed={active}
-                    title={opt.description}
+                    role="radio"
+                    aria-checked={active}
+                    title={opt.hint}
+                    onClick={() =>
+                      setShift((prev) => (opt.id === "time" ? (prev.type === "time" ? prev : shiftFromType("time")) : { type: opt.id }))
+                    }
                     className={cn(
-                      "inline-flex flex-1 items-center justify-center rounded-pill border px-3 py-1 text-center text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:text-sm",
+                      "flex h-[60px] flex-col items-center justify-center gap-2 rounded-lg border text-[13px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                       active
-                        ? "border-primary bg-secondary-container text-primary ring-1 ring-primary"
-                        : cn("border-outline-variant bg-card hover:bg-muted", opt.pillClass),
+                        ? "border-foreground bg-background text-foreground shadow-[0_0_0_1px_hsl(var(--foreground))]"
+                        : "border-input bg-background text-muted-foreground hover:border-foreground/40 hover:text-foreground",
                     )}
                   >
+                    <span className="flex h-3.5 items-center">{opt.swatch}</span>
                     {opt.label}
                   </button>
                 );
               })}
             </div>
-            <p className="text-xs leading-snug text-muted-foreground">
-              {SHIFT_OPTIONS.find((o) => o.id === shift.type)?.description}
-            </p>
 
             {shift.type === "time" && (
-              <div className="grid grid-cols-2 gap-3 rounded-md border border-outline-variant bg-card p-3">
-                <div className="space-y-1">
-                  <Label htmlFor="start">Inicio</Label>
-                  <Input
-                    id="start"
-                    type="time"
-                    value={shift.start ?? DEFAULT_TIME.start}
-                    onChange={(e) => setShift({ ...shift, start: e.target.value })}
-                  />
+              <div className="space-y-3 pt-2">
+                <div className="flex items-end gap-3">
+                  <label className="flex-1 space-y-1">
+                    <span className="text-[13px] font-semibold text-muted-foreground">Inicio</span>
+                    <input
+                      type="time"
+                      value={shift.start ?? ""}
+                      onChange={(e) => setShift({ ...shift, start: e.target.value })}
+                      className="h-11 w-full rounded-lg border border-input bg-background px-3 text-lg font-bold tabular-nums focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+                    />
+                  </label>
+                  <ArrowRight className="mb-3 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                  <label className="flex-1 space-y-1">
+                    <span className="text-[13px] font-semibold text-muted-foreground">Fin</span>
+                    <input
+                      type="time"
+                      value={shift.end ?? ""}
+                      onChange={(e) => setShift({ ...shift, end: e.target.value })}
+                      aria-invalid={timeInvalid}
+                      className="h-11 w-full rounded-lg border border-input bg-background px-3 text-lg font-bold tabular-nums focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 aria-[invalid=true]:border-destructive"
+                    />
+                  </label>
                 </div>
-                <div className="space-y-1">
-                  <Label htmlFor="end">Fin</Label>
-                  <Input
-                    id="end"
-                    type="time"
-                    value={shift.end ?? DEFAULT_TIME.end}
-                    onChange={(e) => setShift({ ...shift, end: e.target.value })}
-                  />
+
+                <div className="flex flex-wrap gap-1.5" aria-label="Horarios frecuentes">
+                  {presets.map((p) => {
+                    const [s, e] = p.split("-");
+                    const active = shift.start === s && shift.end === e;
+                    return (
+                      <button
+                        key={p}
+                        type="button"
+                        aria-pressed={active}
+                        onClick={() => setShift({ type: "time", start: s, end: e })}
+                        className={cn(
+                          "rounded-md border px-2.5 py-1 text-[13px] font-bold tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                          active
+                            ? "border-shift-dayRule bg-shift-day text-shift-dayInk"
+                            : "border-input text-foreground hover:bg-muted",
+                        )}
+                      >
+                        {s}–{e}
+                      </button>
+                    );
+                  })}
                 </div>
+
+                {!timeInvalid && <ShiftTrack shift={shift} />}
               </div>
             )}
-          </section>
+          </Section>
 
-          {/* Step 4 — OBSERVACIONES */}
-          <section className="space-y-2">
-            <SectionHeader step={4} label="Observaciones" />
-            <div className="rounded-md border border-outline-variant bg-card p-3">
-              <div className="flex items-start gap-2">
-                <StickyNote className="mt-2 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-                <div className="flex-1 space-y-1">
-                  <Label htmlFor="note" className="sr-only">
-                    Observaciones
-                  </Label>
-                  <Textarea
-                    id="note"
-                    placeholder="Ej. Cambio de horario por visita médica."
-                    value={note}
-                    onChange={(e) => applyNote(e.target.value)}
-                    rows={3}
-                    maxLength={500}
-                    className="resize-y"
-                  />
-                  <div className="flex items-center justify-between text-[11px]">
-                    <p className="text-muted-foreground">
-                      Opcional. Se mostrará debajo del horario y en el tooltip del día.
-                    </p>
-                    <span
-                      className={cn(
-                        "tabular-nums",
-                        noteTooLong ? "text-destructive" : "text-muted-foreground",
-                      )}
-                    >
-                      {noteLength}/500
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
+          {shift.type !== "rest" && (
+            <Section label="Sede" aside={site ? "Solo estos días" : undefined}>
+              <Select value={site || "__habitual__"} onValueChange={(v) => setSite(v === "__habitual__" ? "" : v)}>
+                <SelectTrigger className="h-10" aria-label="Sede para los días elegidos">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__habitual__">
+                    {person?.defaultSite ? `Sede habitual (${person.defaultSite})` : "Sede habitual de cada persona"}
+                  </SelectItem>
+                  {sites
+                    .map((x) => x.name)
+                    .sort((a, b) => a.localeCompare(b, "es"))
+                    .filter((n) => n !== person?.defaultSite)
+                    .map((n) => (
+                      <SelectItem key={n} value={n}>
+                        {n}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              <p className="flex items-start gap-1.5 text-[13px] leading-snug text-muted-foreground">
+                <ArrowLeftRight className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+                {site
+                  ? `Estos días cuentan en ${site}. La sede habitual de la ficha no cambia.`
+                  : "Para rotaciones, elige otra sede: aplica solo a los días elegidos y no cambia la ficha."}
+              </p>
+            </Section>
+          )}
 
-          {/* Preview */}
-          <AssignmentPreview
-            staffList={selectedStaff}
-            selectedDays={selectedDays}
-            shift={shift}
-          />
+          <Section
+            label="Observación"
+            htmlFor="shift-note"
+            aside={note.length > NOTE_MAX - 100 ? `${note.length}/${NOTE_MAX}` : "Opcional"}
+          >
+            <textarea
+              id="shift-note"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              rows={2}
+              maxLength={NOTE_MAX}
+              placeholder="Ej. Cambio de horario por cita médica"
+              className="w-full resize-y rounded-lg border border-input bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+            />
+          </Section>
         </div>
 
-        <SheetFooter className="border-t border-outline-variant">
-          {staffIds.length === 1 && byWeek[weekStart]?.some((e) => e.staffId === staffIds[0]) && (
-            <Button type="button" variant="ghost" onClick={onClear} className="text-destructive">
-              <Trash2 className="mr-2 h-4 w-4" />
-              Eliminar semana
-            </Button>
+        <footer className="border-t border-border bg-background px-6 py-4">
+          {summary && (
+            <p className={cn("mb-3 text-[13px]", canSave ? "text-muted-foreground" : "text-available-ink")} aria-live="polite">
+              {summary}
+            </p>
           )}
-          <div className="ml-auto flex gap-2">
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+          <div className="flex items-center gap-2">
+            {hasWeek && (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={onClearWeek}
+                disabled={saving}
+                aria-label="Borrar semana"
+                className="-ml-3 text-destructive hover:bg-destructive/10 hover:text-destructive"
+              >
+                <Trash2 />
+                <span className="hidden sm:inline">Borrar semana</span>
+              </Button>
+            )}
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="ml-auto">
               Cancelar
             </Button>
-            <Button type="button" onClick={onSave} disabled={!canSave || saving}>
-              <Save className="mr-2 h-4 w-4" />
-              {saving ? "Guardando…" : "Guardar cambios"}
+            <Button type="button" onClick={onSave} disabled={!canSave || saving} className="min-w-[132px] font-bold">
+              {saving && <Loader2 className="animate-spin" />}
+              {saving ? "Guardando" : editMode ? "Guardar turno" : slots > 0 ? `Asignar ${slots} ${slots === 1 ? "turno" : "turnos"}` : "Asignar"}
             </Button>
           </div>
-        </SheetFooter>
-
-        {/* Screen-reader-only context */}
-        <span className="sr-only">
-          Semana {weekStart}.{" "}
-          {WEEK_DAY_LABELS.filter((d) => selectedDays.includes(d.index))
-            .map((d) => d.long)
-            .join(", ")}
-          . Turno: {shift.type}.
-          {note ? ` Observación: ${note}` : ""}
-        </span>
+        </footer>
       </SheetContent>
     </Sheet>
   );

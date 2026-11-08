@@ -97,15 +97,20 @@ const config: Config = {
    				soft: 'hsl(var(--grid-soft))'
    			},
    			night: 'hsl(var(--night))',
+   			shift: {
+   				day: 'hsl(var(--shift-day))',
+   				dayRule: 'hsl(var(--shift-day-rule))',
+   				dayInk: 'hsl(var(--shift-day-ink))',
+   				night: 'hsl(var(--shift-night))',
+   				nightInk: 'hsl(var(--shift-night-ink))'
+   			},
+   			available: {
+   				DEFAULT: 'hsl(var(--available))',
+   				bg: 'hsl(var(--available-bg))',
+   				ink: 'hsl(var(--available-ink))'
+   			},
    			sidebar: {
-   				DEFAULT: 'hsl(var(--sidebar))',
-   				foreground: 'hsl(var(--sidebar-foreground))',
-   				primary: 'hsl(var(--sidebar-primary))',
-   				'primary-foreground': 'hsl(var(--sidebar-primary-foreground))',
-   				accent: 'hsl(var(--sidebar-accent))',
-   				'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
-   				border: 'hsl(var(--sidebar-border))',
-   				ring: 'hsl(var(--sidebar-ring))'
+   				DEFAULT: 'hsl(var(--sidebar))'
    			}
   		},
   		borderRadius: {
@@ -120,17 +125,17 @@ const config: Config = {
   		},
   		fontFamily: {
   			display: [
-  				'var(--font-hanken)',
+  				'var(--font-overpass)',
   				'system-ui',
   				'sans-serif'
   			],
   			sans: [
-  				'var(--font-inter)',
+  				'var(--font-overpass)',
   				'system-ui',
   				'sans-serif'
   			],
   			mono: [
-  				'var(--font-inter)',
+  				'var(--font-overpass)',
   				'ui-monospace',
   				'monospace'
   			]

@@ -1,12 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Plus, X } from "lucide-react";
+import { Check, Search, UserPlus, X } from "lucide-react";
 
-import { Avatar } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils/cn";
 import { useStaffStore } from "@/store/staff-store";
 import type { Staff } from "@/lib/types";
@@ -14,191 +11,125 @@ import type { Staff } from "@/lib/types";
 interface StaffMultiSelectProps {
   selectedIds: string[];
   onChange: (ids: string[]) => void;
-  /** Optional: limit to staff matching a specific site. */
+  /** Optional: limit the list to one site. */
   siteFilter?: string;
-  /** Initial staff id to focus the "Add" popover at. */
-  prefillId?: string;
   className?: string;
 }
 
-export function StaffMultiSelect({
-  selectedIds,
-  onChange,
-  siteFilter,
-  className,
-}: StaffMultiSelectProps) {
+function normalize(s: string) {
+  return s.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
+}
+
+/** Selected people as removable chips, plus a searchable checklist that stays open while picking. */
+export function StaffMultiSelect({ selectedIds, onChange, siteFilter, className }: StaffMultiSelectProps) {
   const staff = useStaffStore((s) => s.staff);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
 
-  const selectedStaff = useMemo(
-    () =>
-      selectedIds
-        .map((id) => staff.find((s) => s.id === id))
-        .filter((s): s is Staff => Boolean(s)),
+  const selected = useMemo(
+    () => selectedIds.map((id) => staff.find((s) => s.id === id)).filter((s): s is Staff => Boolean(s)),
     [selectedIds, staff],
   );
 
-  const candidates = useMemo(() => {
-    const selected = new Set(selectedIds);
-    const base = staff.filter((s) => !selected.has(s.id));
-    const pool = siteFilter ? base.filter((s) => s.defaultSite === siteFilter) : base;
-    if (!query.trim()) return pool;
-    const q = query.toLowerCase();
-    return pool.filter(
-      (s) => s.fullName.toLowerCase().includes(q) || s.defaultSite.toLowerCase().includes(q),
-    );
-  }, [staff, selectedIds, siteFilter, query]);
+  const list = useMemo(() => {
+    const pool = siteFilter ? staff.filter((s) => s.defaultSite === siteFilter) : staff;
+    const q = normalize(query.trim());
+    return q ? pool.filter((s) => normalize(`${s.fullName} ${s.defaultSite}`).includes(q)) : pool;
+  }, [staff, siteFilter, query]);
 
-  function add(id: string) {
-    if (!selectedIds.includes(id)) onChange([...selectedIds, id]);
-    setQuery("");
-  }
+  const toggle = (id: string) =>
+    onChange(selectedIds.includes(id) ? selectedIds.filter((x) => x !== id) : [...selectedIds, id]);
 
-  function remove(id: string) {
-    onChange(selectedIds.filter((x) => x !== id));
-  }
-
-  // ────────────────────────────────────────────────────────────────────────
-  // Empty state — invites the user to add the first person
-  // ────────────────────────────────────────────────────────────────────────
-  if (selectedStaff.length === 0) {
-    return (
-      <div className={cn("space-y-2", className)}>
-        <div className="flex flex-col items-start gap-3 rounded-md border border-dashed border-outline-variant bg-muted/30 px-4 py-4">
-          <p className="text-body-sm text-muted-foreground">
-            Aún no hay personas. Agregá al menos una para empezar.
-          </p>
-          <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-              <Button type="button" size="sm">
-                <Plus className="mr-1.5 h-4 w-4" />
-                Agregar persona
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[320px] p-2" align="start">
-              <Input
-                autoFocus
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Buscar por nombre o sede…"
-                className="mb-2"
-              />
-              <ul className="max-h-[260px] overflow-y-auto">
-                {candidates.length === 0 ? (
-                  <li className="px-2 py-3 text-center text-body-sm text-muted-foreground">
-                    Sin resultados.
-                  </li>
-                ) : (
-                  candidates.map((s) => (
-                    <li key={s.id}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          add(s.id);
-                          setOpen(false);
-                        }}
-                        className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-body-sm hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
-                      >
-                        <Avatar name={s.fullName} size="sm" className="!h-7 !w-7 text-[11px]" />
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate font-medium">{s.fullName}</span>
-                          <span className="block truncate text-xs text-muted-foreground">
-                            {s.defaultSite || "—"}
-                          </span>
-                        </span>
-                      </button>
-                    </li>
-                  ))
-                )}
-              </ul>
-            </PopoverContent>
-          </Popover>
-        </div>
-      </div>
-    );
-  }
-
-  // ────────────────────────────────────────────────────────────────────────
-  // Populated state — chips + "Agregar otra persona"
-  // ────────────────────────────────────────────────────────────────────────
   return (
     <div className={cn("space-y-2", className)}>
-      <div className="flex flex-wrap gap-2">
-        {selectedStaff.map((s) => (
-          <span
-            key={s.id}
-            className="inline-flex items-center gap-2 rounded-pill border border-outline-variant bg-secondary-container/40 py-1 pl-1 pr-2 text-body-sm"
-          >
-            <Avatar name={s.fullName} size="sm" className="!h-6 !w-6 text-[10px]" />
-            <span className="font-medium">{s.fullName}</span>
-            <button
-              type="button"
-              onClick={() => remove(s.id)}
-              aria-label={`Quitar a ${s.fullName}`}
-              className="ml-1 inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      {selected.length > 0 && (
+        <ul className="flex flex-wrap gap-1.5" aria-label="Personas seleccionadas">
+          {selected.map((s) => (
+            <li
+              key={s.id}
+              className="flex items-center gap-1 rounded-md border border-input bg-background py-1 pl-2.5 pr-1 text-sm"
             >
-              <X className="h-3 w-3" />
-            </button>
-          </span>
-        ))}
+              <span className="font-bold">{s.fullName}</span>
+              {s.defaultSite && <span className="ml-1 text-muted-foreground">{s.defaultSite}</span>}
+              <button
+                type="button"
+                onClick={() => toggle(s.id)}
+                aria-label={`Quitar a ${s.fullName}`}
+                className="ml-0.5 grid h-6 w-6 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
 
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="rounded-pill text-body-sm"
-            >
-              <Plus className="mr-1 h-3.5 w-3.5" />
-              Agregar otra persona
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[320px] p-2" align="start">
-            <Input
+      <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) setQuery(""); }}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className="flex h-10 w-full items-center gap-2 rounded-lg border border-dashed border-input px-3 text-sm font-semibold text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring data-[state=open]:border-solid data-[state=open]:border-primary data-[state=open]:text-foreground"
+          >
+            <UserPlus className="h-4 w-4" aria-hidden />
+            {selected.length === 0 ? "Elegir personas" : "Agregar o quitar personas"}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] p-0">
+          <div className="flex items-center gap-2 border-b border-border px-3">
+            <Search className="h-4 w-4 text-muted-foreground" aria-hidden />
+            <input
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Buscar por nombre o sede…"
-              className="mb-2"
+              placeholder="Buscar por nombre o sede"
+              aria-label="Buscar persona"
+              className="h-10 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             />
-            <ul className="max-h-[260px] overflow-y-auto">
-              {candidates.length === 0 ? (
-                <li className="px-2 py-3 text-center text-body-sm text-muted-foreground">
-                  Sin resultados.
-                </li>
-              ) : (
-                candidates.map((s) => (
-                  <li key={s.id}>
+          </div>
+          <ul className="max-h-[280px] overflow-y-auto p-1" role="listbox" aria-multiselectable>
+            {list.length === 0 ? (
+              <li className="px-3 py-6 text-center text-sm text-muted-foreground">Nadie coincide con la búsqueda.</li>
+            ) : (
+              list.map((s) => {
+                const on = selectedIds.includes(s.id);
+                return (
+                  <li key={s.id} role="option" aria-selected={on}>
                     <button
                       type="button"
-                      onClick={() => {
-                        add(s.id);
-                        setOpen(false);
-                      }}
-                      className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-body-sm hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
+                      onClick={() => toggle(s.id)}
+                      className="flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-left text-sm hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
                     >
-                      <Avatar name={s.fullName} size="sm" className="!h-7 !w-7 text-[11px]" />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate font-medium">{s.fullName}</span>
-                        <span className="block truncate text-xs text-muted-foreground">
-                          {s.defaultSite || "—"}
-                        </span>
+                      <span
+                        aria-hidden
+                        className={cn(
+                          "grid h-4 w-4 shrink-0 place-items-center rounded border",
+                          on ? "border-primary bg-primary text-primary-foreground" : "border-input",
+                        )}
+                      >
+                        {on && <Check className="h-3 w-3" strokeWidth={3} />}
                       </span>
+                      <span className="min-w-0 flex-1 truncate font-semibold">{s.fullName}</span>
+                      <span className="shrink-0 text-xs text-muted-foreground">{s.defaultSite || "—"}</span>
                     </button>
                   </li>
-                ))
-              )}
-            </ul>
-          </PopoverContent>
-        </Popover>
-      </div>
-      <p className="text-xs text-muted-foreground">
-        {selectedStaff.length === 1
-          ? "1 persona seleccionada."
-          : `${selectedStaff.length} personas seleccionadas.`}
-      </p>
+                );
+              })
+            )}
+          </ul>
+          <div className="flex items-center justify-between border-t border-border px-3 py-2 text-xs text-muted-foreground">
+            <span>
+              {selected.length} {selected.length === 1 ? "seleccionada" : "seleccionadas"}
+            </span>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="rounded-md px-2 py-1 font-bold text-foreground hover:bg-muted"
+            >
+              Listo
+            </button>
+          </div>
+        </PopoverContent>
+      </Popover>
     </div>
   );
 }

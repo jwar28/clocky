@@ -1,18 +1,13 @@
 import type { Metadata } from "next";
-import { Inter, Hanken_Grotesk } from "next/font/google";
+import { Overpass } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
-const inter = Inter({
+const overpass = Overpass({
   subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
-});
-
-const hanken = Hanken_Grotesk({
-  subsets: ["latin"],
-  variable: "--font-hanken",
+  variable: "--font-overpass",
+  weight: ["400", "500", "600", "700", "800"],
   display: "swap",
 });
 
@@ -23,7 +18,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={`${inter.variable} ${hanken.variable}`}>
+    <html lang="es" className={overpass.variable}>
       <body className="min-h-screen bg-background text-foreground font-sans antialiased">
         <TooltipProvider delayDuration={150} skipDelayDuration={300}>
           {children}

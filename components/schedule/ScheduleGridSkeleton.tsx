@@ -1,46 +1,40 @@
 "use client";
 
 import { Skeleton } from "@/components/ui/skeleton";
-import { WEEK_DAY_LABELS } from "@/lib/constants";
 import { cn } from "@/lib/utils/cn";
+import { LANE_BACKGROUND } from "./timeline/geometry";
 
-export function ScheduleGridSkeleton() {
+/** Loading state shaped like the week timeline: name column + lanes with placeholder bars. */
+export function ScheduleGridSkeleton({ className }: { className?: string }) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-grid bg-card">
-      <table className="w-full border-collapse text-body-sm">
-        <thead className="bg-primary">
-          <tr>
-            <th className="cell-pad border border-grid text-left">
-              <Skeleton className="h-3 w-16 bg-primary-foreground/30" />
-            </th>
-            <th className="cell-pad border border-grid text-left">
-              <Skeleton className="h-3 w-12 bg-primary-foreground/30" />
-            </th>
-            {WEEK_DAY_LABELS.map((d) => (
-              <th key={d.index} className="cell-pad border border-grid text-center">
-                <Skeleton className="mx-auto h-3 w-10 bg-primary-foreground/30" />
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {Array.from({ length: 9 }).map((_, row) => (
-            <tr key={row} className={cn(row % 2 === 1 && "bg-secondary-container")}>
-              <th className="cell-pad border border-grid text-left">
-                <Skeleton className="h-3 w-32" />
-              </th>
-              <td className="cell-pad border border-grid text-left">
-                <Skeleton className="h-3 w-24" />
-              </td>
-              {WEEK_DAY_LABELS.map((d) => (
-                <td key={d.index} className="cell-pad border border-grid text-center">
-                  <Skeleton className="mx-auto h-3 w-24" />
-                </td>
-              ))}
-            </tr>
+    <div className={cn("flex min-h-0 flex-1 flex-col overflow-hidden", className)} aria-busy aria-label="Cargando malla">
+      <div className="flex h-[74px] border-b border-grid">
+        <div className="w-[200px] shrink-0" />
+        <div className="grid flex-1 grid-cols-7">
+          {Array.from({ length: 7 }).map((_, i) => (
+            <div key={i} className="border-l border-grid px-2 pt-3">
+              <Skeleton className="h-5 w-14" />
+            </div>
           ))}
-        </tbody>
-      </table>
+        </div>
+      </div>
+      {Array.from({ length: 8 }).map((_, row) => (
+        <div key={row} className="flex border-b border-border">
+          <div className="w-[200px] shrink-0 space-y-1.5 px-5 py-3.5">
+            <Skeleton className="h-3.5 w-32" />
+            <Skeleton className="h-3 w-24" />
+          </div>
+          <div className="relative h-[66px] flex-1" style={{ background: LANE_BACKGROUND }}>
+            {Array.from({ length: 6 }).map((_, d) => (
+              <Skeleton
+                key={d}
+                className="absolute top-4 h-[34px]"
+                style={{ left: `${((d + 1) / 7) * 100 + 3.5}%`, width: "5.5%" }}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
