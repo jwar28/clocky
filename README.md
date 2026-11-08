@@ -33,14 +33,6 @@ Replica la densidad visual y estructura de la planilla operativa logística: 2 f
 
 ## Variables de entorno
 
-`.env.local` (ya configurado):
-
-```env
-NEXT_PUBLIC_INSFORGE_URL=https://xw3eshch.us-east.insforge.app
-NEXT_PUBLIC_INSFORGE_ANON_KEY=anon_dcb4417c19047fa10256d334028250b0513cc1e77109742cf450c3f2d5037397
-INSFORGE_API_KEY=ik_49a537a1866cb91611a17ce82c4dc167
-```
-
 `.env.example` provee la plantilla para nuevos entornos.
 
 ---
